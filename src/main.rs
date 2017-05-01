@@ -1,7 +1,7 @@
 extern crate location_history;
 extern crate geo;
 
-mod data;
+//mod data;
 mod country;
 
 use std::fs::File;
@@ -20,11 +20,11 @@ fn main() {
                                 locations.locations[0].timestamp.format("%Y-%m-%d %H:%M:%S"));
     println!("  {} seconds average between timestamps\n", locations.average_time());
 
+
+//    let countries = data::get_country_data();
+
+    let mut last_country = Country{name: "".to_string(), bb: Bbox{xmin: 0.0, xmax: 0.0, ymin: 0.0, ymax: 0.0}, shapes: Vec::new()};
 /*
-    let countries = data::get_country_data();
-
-    let mut last_country = countries[0].clone();
-
     println!("Loaded data for {} Countries\n", countries.len());
 
     for loc in &locations.locations{
