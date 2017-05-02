@@ -1,15 +1,21 @@
 extern crate location_history;
 extern crate geo;
+extern crate dbf;
+extern crate shapefile_utils;
 
 //mod data;
 mod country;
 
 use std::fs::File;
+use std::path::Path;
 use std::io::Read;
 use location_history::Locations;
 use geo::contains::Contains;
 use country::Country;
-use geo::{Bbox, Point, Coordinate};
+use shapefile_utils::Shapefile;
+use shapefile_utils::shape::{Shape, BoundingBox};
+use geo::{Bbox, Point};
+use dbf::Field;
 
 fn main() {
     let mut contents = String::new();
@@ -20,29 +26,73 @@ fn main() {
                                 locations.locations[0].timestamp.format("%Y-%m-%d %H:%M:%S"));
     println!("  {} seconds average between timestamps\n", locations.average_time());
 
+    let mut my_shapefile = Shapefile::new(
+    &Path::new("borders/TM_WORLD_BORDERS-0.3.shp"),
+    &Path::new("borders/TM_WORLD_BORDERS-0.3.shx"),
+    &Path::new("borders/TM_WORLD_BORDERS-0.3.dbf")).unwrap();
 
-//    let countries = data::get_country_data();
+    let mut countries = Vec::new();
 
     let mut last_country = Country{name: "".to_string(), bb: Bbox{xmin: 0.0, xmax: 0.0, ymin: 0.0, ymax: 0.0}, shapes: Vec::new()};
-/*
+
+    for record in my_shapefile.iter() {
+        let mut name = String::new();
+        if let Some(&Field::Character(ref x)) = record.metadata.get(&String::from("NAME")){
+            name = x.to_owned();
+        }
+        if let Shape::Polygon{bounding_box: bb, parts, points} = record.shape {
+            countries.push(Country{
+                              name: name, 
+                              bb: bounding_box_to_bbox(bb),
+                              shapes: shape_poly_to_geo(&parts, &points)});
+        }
+    }
+
     println!("Loaded data for {} Countries\n", countries.len());
 
-    for loc in &locations.locations{
+    for loc in locations.locations.iter().rev(){
         let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
-        //if contains_point(&last_country.bb, &tmp) {
-        //    println!("{:?} found in {}", tmp, last_country.name);
-        //} else {
+        if contains_point(&last_country.bb, &tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp)) {
+            //println!("{:?} found in {}", tmp, last_country.name);
+        } else {
             for country in &countries{
-                if contains_point(&country.bb, &tmp) {
+                if contains_point(&country.bb, &tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
                     println!("{} found in {}", loc.timestamp.format("%Y-%m-%d").to_string(), country.name);
                     last_country = country.clone();
                 }
             }
-        //}
+        }
     }
-*/
 }
 
 fn contains_point (bb: &Bbox<f64>, p: &Point<f64>) -> bool{
         p.x() >= bb.xmin && p.x() <= bb.xmax && p.y() >= bb.ymin && p.y() <= bb.ymax
+}
+
+fn bounding_box_to_bbox(bb: BoundingBox) -> Bbox<f64> {
+    Bbox{xmin: bb.x_min as f64, xmax: bb.x_max as f64, ymin: bb.y_min as f64, ymax: bb.y_max as f64}
+}
+
+fn shape_poly_to_geo(parts: &Vec<i32>, points: &Vec<shapefile_utils::shape::Point>) -> Vec<geo::Polygon<f64>> {
+    let length = parts.len();
+    let mut inside: Vec<geo::LineString<f64>> = Vec::new();
+    //let mut external: Vec<geo::LineString<f64>> = Vec::new();
+    //let outside = geo::LineString(points.iter().map(|x| geo::Point::new(x.x, x.y)).collect());
+    for i in 0 .. (length - 1){
+        let tmp: Vec<shapefile_utils::shape::Point> = points[parts[i] as usize .. parts[i + 1] as usize].iter().cloned().collect();
+        inside.push(geo::LineString(tmp.iter().map(|x| geo::Point::new(x.x, x.y)).collect()));
+    }
+    //for poly in &inside{
+    //    let mut count = 0;
+    //   for poly_inner in &inside{
+    //        let tmp = geo::Polygon::new(poly_inner.clone(), Vec::new());
+    //        if tmp.contains(poly){
+    //            count += 1;
+    //        }
+    //    }
+    //    if count == 0 {
+    //        external.push(poly.clone());
+    //    }
+    //}
+    inside.iter().cloned().map(|x| geo::Polygon::new(x, Vec::new())).collect()
 }

@@ -2,13 +2,9 @@
 name = "country_parser"
 version = "0.1.0"
 authors = ["Eric Trombly <etrombly@yahoo.com>"]
-build = "src/build.rs"
 
 [dependencies]
 location_history = { git = "https://github.com/etrombly/location_history"}
-geo = "0.4.3"
-
-[build-dependencies]
 shapefile-utils = { git = "https://github.com/fceschmidt/shapefile-utils"}
 geo = "0.4.3"
 dbf = "0.1.1"
