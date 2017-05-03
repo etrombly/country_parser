@@ -1,6 +1,6 @@
 extern crate geo;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Country {
     pub name: String,
     pub bb: geo::Bbox<f64>,

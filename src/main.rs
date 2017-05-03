@@ -50,15 +50,17 @@ fn main() {
 
     println!("Loaded data for {} Countries\n", countries.len());
 
-    for loc in locations.locations.iter().rev(){
+    for loc in locations.locations.iter().rev() {
         let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
         if contains_point(&last_country.bb, &tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp)) {
             //println!("{:?} found in {}", tmp, last_country.name);
         } else {
-            for country in &countries{
+            for country in &countries {
                 if contains_point(&country.bb, &tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
-                    println!("{} found in {}", loc.timestamp.format("%Y-%m-%d").to_string(), country.name);
+                    println!("{} found in {} {:?}", loc.timestamp.format("%Y-%m-%d").to_string(), country.name, tmp);
                     last_country = country.clone();
+                } else {
+                    //println!("couldn't find {} {:?}", loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
                 }
             }
         }
@@ -74,25 +76,14 @@ fn bounding_box_to_bbox(bb: BoundingBox) -> Bbox<f64> {
 }
 
 fn shape_poly_to_geo(parts: &Vec<i32>, points: &Vec<shapefile_utils::shape::Point>) -> Vec<geo::Polygon<f64>> {
-    let length = parts.len();
     let mut inside: Vec<geo::LineString<f64>> = Vec::new();
-    //let mut external: Vec<geo::LineString<f64>> = Vec::new();
-    //let outside = geo::LineString(points.iter().map(|x| geo::Point::new(x.x, x.y)).collect());
-    for i in 0 .. (length - 1){
-        let tmp: Vec<shapefile_utils::shape::Point> = points[parts[i] as usize .. parts[i + 1] as usize].iter().cloned().collect();
+    for i in 0 .. parts.len() {
+        let mut next_index =  points.len() - 1;
+        if i < parts.len() - 1 {
+            next_index = parts[(i + 1) as usize] as usize;
+        } 
+        let tmp = &points[parts[i as usize] as usize..next_index];
         inside.push(geo::LineString(tmp.iter().map(|x| geo::Point::new(x.x, x.y)).collect()));
     }
-    //for poly in &inside{
-    //    let mut count = 0;
-    //   for poly_inner in &inside{
-    //        let tmp = geo::Polygon::new(poly_inner.clone(), Vec::new());
-    //        if tmp.contains(poly){
-    //            count += 1;
-    //        }
-    //    }
-    //    if count == 0 {
-    //        external.push(poly.clone());
-    //    }
-    //}
     inside.iter().cloned().map(|x| geo::Polygon::new(x, Vec::new())).collect()
 }
