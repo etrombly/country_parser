@@ -3,7 +3,6 @@ extern crate geo;
 extern crate dbf;
 extern crate shapefile_utils;
 
-//mod data;
 mod country;
 
 use std::fs::File;
@@ -75,17 +74,16 @@ fn main() {
 
     for loc in locations.locations.iter().rev() {
         let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
-        if contains_point(&last_country.bb, &tmp) &&
+        if last_country.bb.contains(&tmp) &&
            last_country.shapes.iter().any(|x| x.contains(&tmp)) {
             //println!("{:?} found in {}", tmp, last_country.name);
         } else {
             for country in &countries {
-                if contains_point(&country.bb, &tmp) &&
+                if country.bb.contains(&tmp) &&
                    country.shapes.iter().any(|x| x.contains(&tmp)) {
-                    println!("{} found in {} {:?}",
+                    println!("{} found in {}",
                              loc.timestamp.format("%Y-%m-%d").to_string(),
-                             country.name,
-                             tmp);
+                             country.name);
                     last_country = country.clone();
                 } else {
                     //println!("couldn't find {} {:?}",
@@ -94,10 +92,6 @@ fn main() {
             }
         }
     }
-}
-
-fn contains_point(bb: &Bbox<f64>, p: &Point<f64>) -> bool {
-    p.x() >= bb.xmin && p.x() <= bb.xmax && p.y() >= bb.ymin && p.y() <= bb.ymax
 }
 
 fn bounding_box_to_bbox(bb: BoundingBox) -> Bbox<f64> {

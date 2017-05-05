@@ -6,5 +6,7 @@ authors = ["Eric Trombly <etrombly@yahoo.com>"]
 [dependencies]
 location_history = { git = "https://github.com/etrombly/location_history"}
 shapefile-utils = { git = "https://github.com/fceschmidt/shapefile-utils"}
-geo = "0.4.3"
+geo = { git = "https://github.com/etrombly/rust-geo"}
 dbf = "0.1.1"
+serde = "1.0.2"
+serde_derive = "1.0.2"
