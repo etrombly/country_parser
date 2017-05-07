@@ -2,11 +2,20 @@
 name = "country_parser"
 version = "0.1.0"
 authors = ["Eric Trombly <etrombly@yahoo.com>"]
+build = "src/build.rs"
 
 [dependencies]
 location_history = { git = "https://github.com/etrombly/location_history"}
-shapefile-utils = { git = "https://github.com/fceschmidt/shapefile-utils"}
-geo = { git = "https://github.com/etrombly/rust-geo"}
+geo = {git = "https://github.com/etrombly/rust-geo", branch = "serialize"}
 dbf = "0.1.1"
-serde = "1.0.2"
-serde_derive = "1.0.2"
+serde = "0.9"
+serde_derive = "0.9"
+bincode = "1.0.0-alpha7"
+
+[build-dependencies]
+shapefile-utils = { git = "https://github.com/fceschmidt/shapefile-utils"}
+geo = {git = "https://github.com/etrombly/rust-geo", branch = "serialize"}
+dbf = "0.1.1"
+serde = "0.9"
+serde_derive = "0.9"
+bincode = "1.0.0-alpha7"
