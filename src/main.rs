@@ -22,7 +22,7 @@ fn main() {
         .read_to_string(&mut contents)
         .unwrap();
     let locations: Locations = Locations::new(&contents);
-    println!("  {} timestamps", locations.locations.len());
+    println!("Loaded  {} timestamps", locations.locations.len());
     println!("  from {} to {}",
              locations.locations[locations.locations.len() - 1]
                  .timestamp
