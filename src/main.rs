@@ -21,7 +21,7 @@ fn main() {
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
-    let locations: Locations = Locations::new(&contents);
+    let mut locations: Locations = Locations::new(&contents);
     println!("Loaded  {} timestamps", locations.locations.len());
     println!("  from {} to {}",
              locations.locations[locations.locations.len() - 1]
@@ -49,8 +49,10 @@ fn main() {
 
     println!("Loaded data for {} Countries\n", countries.len());
 
+    locations.filter_outliers();
+
     for loc in locations.locations.iter() {
-        let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
+        let tmp = geo::Point::new(loc.longitude, loc.latitude);
         if last_country.bb.contains(&tmp) &&
            last_country.shapes.iter().any(|x| x.contains(&tmp)) {
             //println!("{:?} found in {}", tmp, last_country.name);
