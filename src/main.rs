@@ -49,7 +49,7 @@ fn main() {
 
     println!("Loaded data for {} Countries\n", countries.len());
 
-    for loc in locations.locations.iter().rev() {
+    for loc in locations.locations.iter() {
         let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
         if last_country.bb.contains(&tmp) &&
            last_country.shapes.iter().any(|x| x.contains(&tmp)) {
