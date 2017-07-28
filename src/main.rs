@@ -15,7 +15,7 @@ extern crate relm_derive;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-//use location_history::Locations;
+use location_history::Locations;
 use geo::contains::Contains;
 use country::Country;
 use geo::Bbox;
@@ -116,8 +116,8 @@ fn file_dialog() -> Option<PathBuf> {
     dialog.add_filter(&filter);
     dialog.add_button("Ok", gtk::ResponseType::Ok.into());
     dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
-    //let response_ok: i32 = gtk::ResponseType::Ok.into();
-    if dialog.run() ==  gtk::ResponseType::Ok.into() {
+    let response_ok: i32 = gtk::ResponseType::Ok.into();
+    if dialog.run() ==  response_ok {
             let path = dialog.get_filename();
             dialog.destroy();
             return path;
@@ -145,7 +145,7 @@ impl Widget for Win {
     fn update(&mut self, event: Msg, model: &mut Model) {
         match event {
             Quit => gtk::main_quit(),
-            LoadFile(x) => model.text = x.to_string_lossy().into_owned(),
+            LoadFile(x) => model.text = load_json(x),
         }
     }
 
@@ -173,8 +173,7 @@ fn main() {
     Win::run(()).unwrap();
 }
 
-/*
-fn load_json(path: PathBuf) {
+fn load_json(path: PathBuf) -> String {
     let mut contents = String::new();
     File::open(path)
         .unwrap()
@@ -210,6 +209,8 @@ fn load_json(path: PathBuf) {
 
     locations.filter_outliers();
 
+    let mut results: Vec<String> = Vec::new();
+
     for loc in locations.locations.iter() {
         let tmp = geo::Point::new(loc.longitude, loc.latitude);
         if last_country.bb.contains(&tmp) &&
@@ -219,9 +220,9 @@ fn load_json(path: PathBuf) {
             for country in &countries {
                 if country.bb.contains(&tmp) &&
                    country.shapes.iter().any(|x| x.contains(&tmp)) {
-                    println!("{} found in {}",
+                    results.push(format!("{} found in {}\n",
                              loc.timestamp.format("%Y-%m-%d").to_string(),
-                             country.name);
+                             country.name));
                     last_country = country.clone();
                 } else {
                     //println!("couldn't find {} {:?}",
@@ -230,5 +231,5 @@ fn load_json(path: PathBuf) {
             }
         }
     }
+    results.into_iter().collect()
 }
-*/
