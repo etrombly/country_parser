@@ -22,6 +22,7 @@ use geo::Bbox;
 use bincode::deserialize;
 
 use gtk::{
+    BoxExt,
     FileChooserDialog,
     FileChooserExt,
     DialogExt,
@@ -159,9 +160,17 @@ impl Widget for Win {
                     FileSelected(path_buf) => LoadFile(path_buf),
                     MenuQuit => Quit,
                 },
-                gtk::Label {
-                    // Bind the text property of the label to the counter attribute of the model.
-                    text: &model.text,
+                gtk::ScrolledWindow {
+                    packing: {
+                        expand: true,
+                    },
+                    gtk::Viewport{
+                        gtk::Label {
+                            halign: gtk::Align::Start,
+                            // Bind the text property of the label to the counter attribute of the model.
+                            text: &model.text,
+                        },
+                    },
                 },
             },
             delete_event(_, _) => (Quit, Inhibit(false)),
@@ -212,6 +221,7 @@ fn load_json(path: PathBuf) -> String {
     let mut results: Vec<String> = Vec::new();
 
     for loc in locations.locations.iter() {
+        gtk::main_iteration_do(false);
         let tmp = geo::Point::new(loc.longitude, loc.latitude);
         if last_country.bb.contains(&tmp) &&
            last_country.shapes.iter().any(|x| x.contains(&tmp)) {
