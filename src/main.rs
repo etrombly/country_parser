@@ -188,7 +188,7 @@ fn main() {
 fn load_json(parent: &gtk::Window, path: PathBuf) -> String {
     let dialog = Dialog::new_with_buttons(Some("Processing Location History"), 
                                           Some(parent),
-                                          gtk::DIALOG_MODAL,
+                                          gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
                                           &[]);
     let content = dialog.get_content_area();
     let progress = ProgressBar::new();
@@ -241,7 +241,7 @@ fn load_json(parent: &gtk::Window, path: PathBuf) -> String {
         let tmp = geo::Point::new(loc.longitude, loc.latitude);
         if last_country.bb.contains(&tmp) &&
            last_country.shapes.iter().any(|x| x.contains(&tmp)) {
-            //println!("{:?} found in {}", tmp, last_country.name);
+               // do nothing
         } else {
             for country in &countries {
                 if country.bb.contains(&tmp) &&
@@ -251,8 +251,8 @@ fn load_json(parent: &gtk::Window, path: PathBuf) -> String {
                              country.name));
                     last_country = country.clone();
                 } else {
-                    //println!("couldn't find {} {:?}",
-                    //         loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
+                    println!("couldn't find {} {:?}",
+                             loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
                 }
             }
         }
