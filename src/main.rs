@@ -36,7 +36,6 @@ use gtk::{
     OrientableExt,
     ProgressBar,
     WidgetExt,
-    WindowExt,
 };
 use gtk::Orientation::Vertical;
 use relm::Widget;
@@ -113,7 +112,7 @@ impl Widget for MyMenuBar {
 }
 
 fn file_dialog() -> Option<PathBuf> {
-    let dialog = FileChooserDialog::new::<FileChooserDialog>(Some("Import File"), None, gtk::FileChooserAction::Open);
+    let dialog = FileChooserDialog::new::<gtk::Window>(Some("Import File"), None, gtk::FileChooserAction::Open);
     let filter = gtk::FileFilter::new();
     filter.set_name("json");
     filter.add_pattern("*.json");
@@ -149,11 +148,12 @@ impl Widget for Win {
     fn update(&mut self, event: Msg, model: &mut Model) {
         match event {
             Quit => gtk::main_quit(),
-            LoadFile(x) => model.text = load_json(x),
+            LoadFile(x) => model.text = load_json(&self.root, x),
         }
     }
 
     view! {
+        #[name="root"]
         gtk::Window {
             gtk::Box {
                 // Set the orientation property of the Box.
@@ -185,9 +185,11 @@ fn main() {
     Win::run(()).unwrap();
 }
 
-fn load_json(path: PathBuf) -> String {
-    let dialog = Dialog::new();
-    dialog.set_title("Processing Location History");
+fn load_json(parent: &gtk::Window, path: PathBuf) -> String {
+    let dialog = Dialog::new_with_buttons(Some("Processing Location History"), 
+                                          Some(parent),
+                                          gtk::DIALOG_MODAL,
+                                          &[]);
     let content = dialog.get_content_area();
     let progress = ProgressBar::new();
     content.pack_start(&progress, true, true, 0);
