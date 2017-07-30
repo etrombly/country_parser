@@ -25,6 +25,7 @@ use gtk::{
     BoxExt,
     FileChooserDialog,
     FileChooserExt,
+    Dialog,
     DialogExt,
     Inhibit,
     Menu,
@@ -33,7 +34,9 @@ use gtk::{
     MenuItemExt,
     MenuShellExt,
     OrientableExt,
+    ProgressBar,
     WidgetExt,
+    WindowExt,
 };
 use gtk::Orientation::Vertical;
 use relm::Widget;
@@ -183,6 +186,14 @@ fn main() {
 }
 
 fn load_json(path: PathBuf) -> String {
+    let dialog = Dialog::new();
+    dialog.set_title("Processing Location History");
+    let content = dialog.get_content_area();
+    let progress = ProgressBar::new();
+    content.pack_start(&progress, true, true, 0);
+    progress.set_fraction(0.0);
+    dialog.show_all();
+
     let mut contents = String::new();
     File::open(path)
         .unwrap()
@@ -220,7 +231,10 @@ fn load_json(path: PathBuf) -> String {
 
     let mut results: Vec<String> = Vec::new();
 
-    for loc in locations.locations.iter() {
+    let total = locations.locations.len();
+
+    for (i, loc) in locations.locations.iter().enumerate() {
+        progress.set_fraction(i as f64 / total as f64);
         gtk::main_iteration_do(false);
         let tmp = geo::Point::new(loc.longitude, loc.latitude);
         if last_country.bb.contains(&tmp) &&
@@ -241,5 +255,6 @@ fn load_json(path: PathBuf) -> String {
             }
         }
     }
+    dialog.destroy();
     results.into_iter().collect()
 }
