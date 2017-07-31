@@ -1,6 +1,6 @@
 # Use Google location history to figure out where you've been
 
-![screenshot](https://raw.githubusercontent.com/etrombly/country_parser/master/screenshot.png)
+![screenshot](/screenshot.png?raw=true "Screenshot")
 
 ## Getting started
 
