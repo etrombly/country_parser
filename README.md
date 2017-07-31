@@ -1,5 +1,7 @@
 # Use Google location history to figure out where you've been
 
+![screenshot](https://raw.githubusercontent.com/etrombly/country_parser/master/screenshot.png)
+
 ## Getting started
 
 * go to https://www.google.com/takeout
@@ -10,10 +12,10 @@
 
 * scroll down and select next, then create archive. 
 
-Then go to https://github.com/etrombly/country_parser/releases and download the country_parser or country_parser.exe (if you're using windows). 
+Then go to https://github.com/etrombly/country_parser/releases and download the country_parser or country_parser.zip (if you're using windows). 
 
-* Unzip your location history and make sure it is in the same location as country_parser
+* Unzip your location history
 
-* open a terminal and run country_parser. 
+* open country_parser, go to file->import location history, and select your LocationHistory.json
 
-It should output a list of dates and countries visited. I noticed a few entries in my location history that were wrong, and if your phone is on while traveling it will show countries that you were just in the airport. Should help you out with dates though.
+It should output a list of dates and countries visited.
