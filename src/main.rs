@@ -232,10 +232,10 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) -> String
         } else {
             for country in &countries {
                 if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
-                    if let Some(visit) = visits.visits.last_mut() {
+                    if let Some(visit) = visits.last_mut() {
                         visit.end = Some(loc.timestamp);
                     }
-                    visits.visits.push(Visit::new(country.clone(), loc.timestamp, None));
+                    visits.add(Visit::new(country.clone(), loc.timestamp, None));
                     results.push(format!("{} found in {}\n",
                              loc.timestamp.format("%Y-%m-%d").to_string(),
                              country.name));
@@ -249,8 +249,7 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) -> String
     }
 
     let test = visits
-               .visits
-               .iter()
+               .into_iter()
                .fold(BTreeMap::new(), 
                     |mut m, c| { m.entry(c.start.format("%Y").to_string()).or_insert(Vec::new()).push(c); m });
     for (key, visits) in test {
@@ -259,10 +258,9 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) -> String
     }
 
     let test = visits
-               .visits
-               .iter()
+               .into_iter()
                .fold(BTreeMap::new(), 
-                    |mut m, c| { m.entry(&c.country.name).or_insert(Vec::new()).push(c); m });
+                    |mut m, c| { m.entry(c.country.name.clone()).or_insert(Vec::new()).push(c); m });
     for (key, visits) in test {
         let temp: Vec<String> = visits.iter().map(|x| x.start.format("%Y").to_string()).collect();
         println!("{} {:?}", key, temp);
