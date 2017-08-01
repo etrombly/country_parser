@@ -22,10 +22,11 @@ pub struct Country {
 }
 
 fn main() {
-    let mut my_shapefile = Shapefile::new(Path::new("src/borders/TM_WORLD_BORDERS-0.3.shp"),
-                                        Path::new("src/borders/TM_WORLD_BORDERS-0.3.shx"),
-                                        Path::new("src/borders/TM_WORLD_BORDERS-0.3.dbf"))
-        .unwrap();
+    let mut my_shapefile = Shapefile::new(
+        Path::new("src/borders/TM_WORLD_BORDERS-0.3.shp"),
+        Path::new("src/borders/TM_WORLD_BORDERS-0.3.shx"),
+        Path::new("src/borders/TM_WORLD_BORDERS-0.3.dbf"),
+    ).unwrap();
 
     let mut countries = Vec::new();
 
@@ -35,23 +36,23 @@ fn main() {
             name = x.to_owned();
         }
         if let Shape::Polygon {
-                   bounding_box: bb,
-                   parts,
-                   points,
-               } = record.shape {
+            bounding_box: bb,
+            parts,
+            points,
+        } = record.shape
+        {
             countries.push(Country {
-                               name: name,
-                               bb: bounding_box_to_bbox(bb),
-                               shapes: shape_poly_to_geo(&parts, &points),
-                           });
+                name: name,
+                bb: bounding_box_to_bbox(bb),
+                shapes: shape_poly_to_geo(&parts, &points),
+            });
         }
     }
 
     println!("Loaded data for {} Countries\n", countries.len());
     let encoded: Vec<u8> = serialize(&countries, Infinite).unwrap();
 
-    let mut bin = File::create("src/countries.bin")
-        .unwrap();
+    let mut bin = File::create("src/countries.bin").unwrap();
     bin.write_all(&encoded).unwrap();
     bin.sync_all().unwrap();
 }
@@ -65,9 +66,10 @@ fn bounding_box_to_bbox(bb: BoundingBox) -> Bbox<f64> {
     }
 }
 
-fn shape_poly_to_geo(parts: &[i32],
-                     points: &[shapefile_utils::shape::Point])
-                     -> Vec<geo::Polygon<f64>> {
+fn shape_poly_to_geo(
+    parts: &[i32],
+    points: &[shapefile_utils::shape::Point],
+) -> Vec<geo::Polygon<f64>> {
     let mut inside: Vec<geo::LineString<f64>> = Vec::new();
     for i in 0..parts.len() {
         let next_index = if i < parts.len() - 1 {
@@ -76,7 +78,9 @@ fn shape_poly_to_geo(parts: &[i32],
             points.len() - 1
         };
         let tmp = &points[parts[i as usize] as usize..next_index];
-        inside.push(geo::LineString(tmp.iter().map(|x| geo::Point::new(x.x, x.y)).collect()));
+        inside.push(geo::LineString(
+            tmp.iter().map(|x| geo::Point::new(x.x, x.y)).collect(),
+        ));
     }
     inside
         .iter()

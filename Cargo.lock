@@ -3,8 +3,9 @@ name = "country_parser"
 version = "0.1.0"
 dependencies = [
  "bincode 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbf 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "geo 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "geo 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtk 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtk-sys 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "location_history 0.1.0 (git+https://github.com/etrombly/location_history)",
@@ -181,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "geo"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -672,7 +673,7 @@ dependencies = [
 "checksum gdk-pixbuf 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "65506bc318d83947c3ee458cec22c35377a941770e0b762e35fbb491e91d012f"
 "checksum gdk-pixbuf-sys 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ff3c977528255ba4f1dfaecfb697c630996c4f5a6a3b1fbc08ff7bdeb3f754c3"
 "checksum gdk-sys 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "c11dcde28f6ddf0bc6a93cec5205aafb034c318d99147a9668d455d66e5ba749"
-"checksum geo 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "9bdbe499748e311a0dd538581b3b6735e920bba7ed4602e28a8837327a68acab"
+"checksum geo 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)" = "e63cba3b230a18ca08c2f0f8576a902eb1651f5d713fafd8a10653936ded8a9b"
 "checksum gio 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "1b5f3ca1ee702ff9f5fea73ebb33ad8d007f2e77b8179d90689c919ef328da32"
 "checksum gio-sys 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "963cf38f6575843b98fe7d39d426c4c0025b6f965a9a8b8c0165aface866400a"
 "checksum glib 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "81f514a8abd315ede0e94e39ce5987fdb99191c5f812e5066bc5bdb965104fc4"
