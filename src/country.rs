@@ -18,20 +18,27 @@ pub struct Visit {
 }
 
 impl Visit {
-    pub fn new(
-        country: Country,
-        start: NaiveDateTime,
-        end: Option<NaiveDateTime>,
-    ) -> Visit {
+    pub fn new(country: Country, start: NaiveDateTime, end: Option<NaiveDateTime>) -> Visit {
         Visit {
             country,
             start,
             end,
         }
     }
+
+    pub fn start_to_string(&self) -> String {
+        self.start.format("%Y-%m-%d").to_string()
+    }
+
+    pub fn end_to_string(&self) -> String {
+        match self.end{
+            Some(x) => x.format("%Y-%m-%d").to_string(),
+            _ => "".to_string(),
+        }
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Visits(Vec<Visit>);
 
 impl Visits {

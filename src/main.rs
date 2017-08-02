@@ -22,7 +22,7 @@ use country::{Country, Visits, Visit};
 use geo::Bbox;
 use bincode::deserialize;
 
-use gtk::{BoxExt, FileChooserDialog, FileChooserExt, Dialog, DialogExt, Inhibit, Menu, MenuBar,
+use gtk::{BoxExt, CellLayoutExt, FileChooserDialog, FileChooserExt, Dialog, DialogExt, Inhibit, Menu, MenuBar,
           MenuItem, MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, WidgetExt};
 use gtk::Orientation::Vertical;
 use relm::Widget;
@@ -37,7 +37,6 @@ mod country;
 // Define the structure of the model.
 #[derive(Clone)]
 pub struct Model {
-    text: String,
     visits: Visits,
 }
 
@@ -127,14 +126,16 @@ pub enum Msg {
 impl Widget for Win {
     // The initial model.
     fn model() -> Model {
-        Model { text: "".to_string(), visits: Visits::new(), }
+        Model {
+            visits: Visits::new(),
+        }
     }
 
     // Update the model according to the message received.
     fn update(&mut self, event: Msg, model: &mut Model) {
         match event {
             Quit => gtk::main_quit(),
-            LoadFile(x) => model.text = load_json(&self.root, x, &mut model.visits),
+            LoadFile(x) => load_json(&self.root, x, &mut model.visits, &self.tree),
         }
     }
 
@@ -154,10 +155,8 @@ impl Widget for Win {
                         expand: true,
                     },
                     gtk::Viewport{
-                        gtk::Label {
-                            halign: gtk::Align::Start,
-                            // Bind the text property of the label to the counter attribute of the model.
-                            text: &model.text,
+                        #[name="tree"]
+                        gtk::TreeView{
                         },
                     },
                 },
@@ -171,7 +170,7 @@ fn main() {
     Win::run(()).unwrap();
 }
 
-fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) -> String {
+fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits, tree: &gtk::TreeView) {
     let dialog = Dialog::new_with_buttons(
         Some("Processing Location History"),
         Some(parent),
@@ -248,24 +247,63 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) -> String
         }
     }
 
-    let test = visits
-               .into_iter()
-               .fold(BTreeMap::new(), 
-                    |mut m, c| { m.entry(c.start.format("%Y").to_string()).or_insert(Vec::new()).push(c); m });
+    let test = visits.into_iter().fold(BTreeMap::new(), |mut m, c| {
+        m.entry(c.start.format("%Y").to_string())
+            .or_insert_with(Vec::new)
+            .push(c);
+        m
+    });
+
     for (key, visits) in test {
         let temp: Vec<&String> = visits.iter().map(|x| &x.country.name).collect();
         println!("{} {:?}", key, temp);
     }
 
-    let test = visits
-               .into_iter()
-               .fold(BTreeMap::new(), 
-                    |mut m, c| { m.entry(c.country.name.clone()).or_insert(Vec::new()).push(c); m });
+    let test = visits.into_iter().fold(BTreeMap::new(), |mut m, c| {
+        m.entry(c.country.name.clone())
+            .or_insert_with(Vec::new)
+            .push(c);
+        m
+    });
+
+    let country_column = gtk::TreeViewColumn::new();
+    let country_column_cell = gtk::CellRendererText::new();
+    country_column.set_title("Country");
+    country_column.pack_start(&country_column_cell, true);
+
+    let start_column = gtk::TreeViewColumn::new();
+    let start_column_cell = gtk::CellRendererText::new();
+    start_column.set_title("Start date");
+    start_column.pack_start(&start_column_cell, true);
+
+    let end_column = gtk::TreeViewColumn::new();
+    let end_column_cell = gtk::CellRendererText::new();
+    end_column.set_title("End date");
+    end_column.pack_start(&end_column_cell, true);
+
+    tree.append_column(&country_column);
+    tree.append_column(&start_column);
+    tree.append_column(&end_column);
+
+    country_column.add_attribute(&country_column_cell, "text", 0);
+    start_column.add_attribute(&start_column_cell, "text", 1);
+    end_column.add_attribute(&end_column_cell, "text", 2);
+
+    let model = gtk::TreeStore::new(&[gtk::Type::String,gtk::Type::String,gtk::Type::String]);
+    
     for (key, visits) in test {
-        let temp: Vec<String> = visits.iter().map(|x| x.start.format("%Y").to_string()).collect();
-        println!("{} {:?}", key, temp);
+        let top = model.append(None);
+        model.set(&top, &[0], &[&key]);
+        for visit in visits {
+            let entries = model.append(&top);
+            model.set(&entries, &[1,2], &[
+                        &visit.start_to_string(),
+                        &visit.end_to_string(),
+                      ]);
+        }
     }
 
+    tree.set_model(&model);
+
     dialog.destroy();
-    results.into_iter().collect()
 }
