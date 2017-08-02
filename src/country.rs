@@ -27,12 +27,12 @@ impl Visit {
     }
 
     pub fn start_to_string(&self) -> String {
-        self.start.format("%Y-%m-%d").to_string()
+        self.start.format("%d %b %Y").to_string()
     }
 
     pub fn end_to_string(&self) -> String {
         match self.end{
-            Some(x) => x.format("%Y-%m-%d").to_string(),
+            Some(x) => x.format("%d %b %Y").to_string(),
             _ => "".to_string(),
         }
     }
