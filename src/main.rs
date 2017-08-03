@@ -1,4 +1,6 @@
 #![feature(proc_macro)]
+#![windows_subsystem = "windows"]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate location_history;
