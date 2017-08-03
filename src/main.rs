@@ -15,14 +15,13 @@ extern crate relm_derive;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use std::collections::BTreeMap;
 use location_history::Locations;
 use geo::contains::Contains;
-use country::{Country, Visits, Visit};
+use country::{Country, Visits, Visit, VisitsMethods};
 use geo::Bbox;
 use bincode::deserialize;
 
-use gtk::{BoxExt, CellLayoutExt, FileChooserDialog, FileChooserExt, Dialog, DialogExt, Inhibit, Menu, MenuBar,
+use gtk::{BoxExt, FileChooserDialog, FileChooserExt, Dialog, DialogExt, Inhibit, Menu, MenuBar,
           MenuItem, MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, WidgetExt};
 use gtk::Orientation::Vertical;
 use relm::Widget;
@@ -67,12 +66,18 @@ impl Widget for MyMenuBar {
     fn update(&mut self, _event: MenuMsg, _model: &mut Self::Model) {}
 
     fn view(relm: &RemoteRelm<Self>, _model: &Self::Model) -> Self {
-        let menu = Menu::new();
+        let menu_file = Menu::new();
+        let menu_sort = Menu::new();
         let menu_bar = MenuBar::new();
+
         let file = MenuItem::new_with_label("File");
         let about = MenuItem::new_with_label("About");
         let quit = MenuItem::new_with_label("Quit");
         let file_item = MenuItem::new_with_label("Import LocationHistory");
+
+        let sort = MenuItem::new_with_label("Sort");
+        let year = MenuItem::new_with_label("Year");
+        let country = MenuItem::new_with_label("Country");
 
         connect!(relm, quit, connect_activate(_), MenuQuit);
         connect!(relm, file_item, connect_activate(_) {
@@ -83,11 +88,17 @@ impl Widget for MyMenuBar {
             }
         });
 
-        menu.append(&file_item);
-        menu.append(&about);
-        menu.append(&quit);
-        file.set_submenu(Some(&menu));
+        menu_file.append(&file_item);
+        menu_file.append(&about);
+        menu_file.append(&quit);
+        file.set_submenu(Some(&menu_file));
+
+        menu_sort.append(&year);
+        menu_sort.append(&country);
+        sort.set_submenu(&menu_sort);
+
         menu_bar.append(&file);
+        menu_bar.append(&sort);
         menu_bar.show_all();
 
         MyMenuBar { bar: menu_bar }
@@ -135,7 +146,10 @@ impl Widget for Win {
     fn update(&mut self, event: Msg, model: &mut Model) {
         match event {
             Quit => gtk::main_quit(),
-            LoadFile(x) => load_json(&self.root, x, &mut model.visits, &self.tree),
+            LoadFile(x) => {
+                load_json(&self.root, x, &mut model.visits);
+                model.visits.set_year_model(&self.tree);
+            },
         }
     }
 
@@ -170,39 +184,35 @@ fn main() {
     Win::run(()).unwrap();
 }
 
-fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits, tree: &gtk::TreeView) {
+fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
+    // set up progress bar
     let dialog = Dialog::new_with_buttons(
         Some("Processing Location History"),
         Some(parent),
         gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
         &[],
     );
+
     let content = dialog.get_content_area();
     let progress = ProgressBar::new();
     content.pack_start(&progress, true, true, 0);
     progress.set_fraction(0.0);
     dialog.show_all();
 
+    // read json file
     let mut contents = String::new();
     File::open(path)
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
     let mut locations: Locations = Locations::new(&contents);
-    println!("Loaded  {} timestamps", locations.locations.len());
-    println!("  from {} to {}",
-             locations.locations[locations.locations.len() - 1]
-                 .timestamp
-                 .format("%Y-%m-%d %H:%M:%S"),
-             locations.locations[0]
-                 .timestamp
-                 .format("%Y-%m-%d %H:%M:%S"));
-    println!("  {} seconds average between timestamps\n",
-             locations.average_time());
+    locations.filter_outliers();
 
+    // read country borders
     let encoded = include_bytes!("countries.bin");
     let countries: Vec<Country> = deserialize(&encoded[..]).unwrap();
 
+    // empty country to start with
     let mut last_country = Country {
         name: "".to_string(),
         bb: Bbox {
@@ -213,12 +223,6 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits, tree: &gt
         },
         shapes: Vec::new(),
     };
-
-    println!("Loaded data for {} Countries\n", countries.len());
-
-    locations.filter_outliers();
-
-    let mut results: Vec<String> = Vec::new();
 
     let total = locations.locations.len();
 
@@ -234,10 +238,7 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits, tree: &gt
                     if let Some(visit) = visits.last_mut() {
                         visit.end = Some(loc.timestamp);
                     }
-                    visits.add(Visit::new(country.clone(), loc.timestamp, None));
-                    results.push(format!("{} found in {}\n",
-                             loc.timestamp.format("%Y-%m-%d").to_string(),
-                             country.name));
+                    visits.push(Visit::new(country.clone(), loc.timestamp, None));
                     last_country = country.clone();
                 } else {
                     println!("couldn't find {} {:?}",
@@ -246,64 +247,6 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits, tree: &gt
             }
         }
     }
-
-    let test = visits.into_iter().fold(BTreeMap::new(), |mut m, c| {
-        m.entry(c.start.format("%Y").to_string())
-            .or_insert_with(Vec::new)
-            .push(c);
-        m
-    });
-
-    for (key, visits) in test {
-        let temp: Vec<&String> = visits.iter().map(|x| &x.country.name).collect();
-        println!("{} {:?}", key, temp);
-    }
-
-    let test = visits.into_iter().fold(BTreeMap::new(), |mut m, c| {
-        m.entry(c.country.name.clone())
-            .or_insert_with(Vec::new)
-            .push(c);
-        m
-    });
-
-    let country_column = gtk::TreeViewColumn::new();
-    let country_column_cell = gtk::CellRendererText::new();
-    country_column.set_title("Country");
-    country_column.pack_start(&country_column_cell, true);
-
-    let start_column = gtk::TreeViewColumn::new();
-    let start_column_cell = gtk::CellRendererText::new();
-    start_column.set_title("Start date");
-    start_column.pack_start(&start_column_cell, true);
-
-    let end_column = gtk::TreeViewColumn::new();
-    let end_column_cell = gtk::CellRendererText::new();
-    end_column.set_title("End date");
-    end_column.pack_start(&end_column_cell, true);
-
-    tree.append_column(&country_column);
-    tree.append_column(&start_column);
-    tree.append_column(&end_column);
-
-    country_column.add_attribute(&country_column_cell, "text", 0);
-    start_column.add_attribute(&start_column_cell, "text", 1);
-    end_column.add_attribute(&end_column_cell, "text", 2);
-
-    let model = gtk::TreeStore::new(&[gtk::Type::String,gtk::Type::String,gtk::Type::String]);
-    
-    for (key, visits) in test {
-        let top = model.append(None);
-        model.set(&top, &[0], &[&key]);
-        for visit in visits {
-            let entries = model.append(&top);
-            model.set(&entries, &[1,2], &[
-                        &visit.start_to_string(),
-                        &visit.end_to_string(),
-                      ]);
-        }
-    }
-
-    tree.set_model(&model);
 
     dialog.destroy();
 }
