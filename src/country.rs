@@ -4,7 +4,6 @@ extern crate gtk;
 
 use std::collections::BTreeMap;
 use self::chrono::NaiveDateTime;
-use gtk::CellLayoutExt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Country {
@@ -34,7 +33,7 @@ impl Visit {
     }
 
     pub fn end_to_string(&self) -> String {
-        match self.end{
+        match self.end {
             Some(x) => x.format("%d %b %Y").to_string(),
             _ => "".to_string(),
         }
@@ -52,45 +51,24 @@ pub type Visits = Vec<Visit>;
 impl VisitsMethods for Visits {
     fn set_country_model(&self, tree: &gtk::TreeView) {
         let sorted = self.iter().fold(BTreeMap::new(), |mut m, c| {
-                m.entry(c.country.name.clone())
-                        .or_insert_with(Vec::new)
-                        .push(c);
-                m
+            m.entry(c.country.name.clone())
+                .or_insert_with(Vec::new)
+                .push(c);
+            m
         });
 
-        let country_column = gtk::TreeViewColumn::new();
-        let country_column_cell = gtk::CellRendererText::new();
-        country_column.set_title("Country");
-        country_column.pack_start(&country_column_cell, true);
+        let model = gtk::TreeStore::new(&[gtk::Type::String, gtk::Type::String, gtk::Type::String]);
 
-        let start_column = gtk::TreeViewColumn::new();
-        let start_column_cell = gtk::CellRendererText::new();
-        start_column.set_title("Start date");
-        start_column.pack_start(&start_column_cell, true);
-
-        let end_column = gtk::TreeViewColumn::new();
-        let end_column_cell = gtk::CellRendererText::new();
-        end_column.set_title("End date");
-        end_column.pack_start(&end_column_cell, true);
-
-        tree.append_column(&country_column);
-        tree.append_column(&start_column);
-        tree.append_column(&end_column);
-
-        country_column.add_attribute(&country_column_cell, "text", 0);
-        start_column.add_attribute(&start_column_cell, "text", 1);
-        end_column.add_attribute(&end_column_cell, "text", 2);
-        let model = gtk::TreeStore::new(&[gtk::Type::String,gtk::Type::String,gtk::Type::String]);
-        
         for (key, visits) in sorted {
             let top = model.append(None);
             model.set(&top, &[0], &[&key]);
             for visit in visits {
                 let entries = model.append(&top);
-                model.set(&entries, &[1,2], &[
-                            &visit.start_to_string(),
-                            &visit.end_to_string(),
-                        ]);
+                model.set(
+                    &entries,
+                    &[1, 2],
+                    &[&visit.start_to_string(), &visit.end_to_string()],
+                );
             }
         }
 
@@ -105,41 +83,22 @@ impl VisitsMethods for Visits {
             m
         });
 
-        let country_column = gtk::TreeViewColumn::new();
-        let country_column_cell = gtk::CellRendererText::new();
-        country_column.set_title("Country");
-        country_column.pack_start(&country_column_cell, true);
+        let model = gtk::TreeStore::new(&[gtk::Type::String, gtk::Type::String, gtk::Type::String]);
 
-        let start_column = gtk::TreeViewColumn::new();
-        let start_column_cell = gtk::CellRendererText::new();
-        start_column.set_title("Start date");
-        start_column.pack_start(&start_column_cell, true);
-
-        let end_column = gtk::TreeViewColumn::new();
-        let end_column_cell = gtk::CellRendererText::new();
-        end_column.set_title("End date");
-        end_column.pack_start(&end_column_cell, true);
-
-        tree.append_column(&country_column);
-        tree.append_column(&start_column);
-        tree.append_column(&end_column);
-
-        country_column.add_attribute(&country_column_cell, "text", 0);
-        start_column.add_attribute(&start_column_cell, "text", 1);
-        end_column.add_attribute(&end_column_cell, "text", 2);
-
-        let model = gtk::TreeStore::new(&[gtk::Type::String,gtk::Type::String,gtk::Type::String]);
-        
         for (key, visits) in sorted {
             let top = model.append(None);
             model.set(&top, &[0], &[&key]);
             for visit in visits {
                 let entries = model.append(&top);
-                model.set(&entries, &[0,1,2], &[
-                            &visit.country.name,
-                            &visit.start_to_string(),
-                            &visit.end_to_string(),
-                        ]);
+                model.set(
+                    &entries,
+                    &[0, 1, 2],
+                    &[
+                        &visit.country.name,
+                        &visit.start_to_string(),
+                        &visit.end_to_string(),
+                    ],
+                );
             }
         }
 

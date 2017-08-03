@@ -21,8 +21,9 @@ use country::{Country, Visits, Visit, VisitsMethods};
 use geo::Bbox;
 use bincode::deserialize;
 
-use gtk::{BoxExt, FileChooserDialog, FileChooserExt, Dialog, DialogExt, Inhibit, Menu, MenuBar,
-          MenuItem, MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, WidgetExt};
+use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
+          DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
+          ProgressBar, TreeView, Viewport, WidgetExt};
 use gtk::Orientation::Vertical;
 use relm::Widget;
 use relm_attributes::widget;
@@ -33,16 +34,10 @@ use self::MenuMsg::*;
 
 mod country;
 
-// Define the structure of the model.
-#[derive(Clone)]
-pub struct Model {
-    visits: Visits,
-}
-
 // The messages that can be sent to the update function.
 #[derive(Msg)]
 enum MenuMsg {
-    FileSelected(PathBuf),
+    FileSelected,
     MenuQuit,
 }
 
@@ -80,13 +75,7 @@ impl Widget for MyMenuBar {
         let country = MenuItem::new_with_label("Country");
 
         connect!(relm, quit, connect_activate(_), MenuQuit);
-        connect!(relm, file_item, connect_activate(_) {
-            let result = file_dialog();
-            match result {
-                Some(x) => (Some(FileSelected(x)), ()),
-                _ => (None, ()),
-            }
-        });
+        connect!(relm, file_item, connect_activate(_), FileSelected);
 
         menu_file.append(&file_item);
         menu_file.append(&about);
@@ -105,10 +94,120 @@ impl Widget for MyMenuBar {
     }
 }
 
-fn file_dialog() -> Option<PathBuf> {
+#[derive(Clone)]
+struct MyViewPort {
+    view: Viewport,
+    tree: TreeView,
+}
+
+impl Widget for MyViewPort {
+    type Model = ();
+    type ModelParam = ();
+    type Msg = ();
+    type Root = Viewport;
+
+    fn model(_: ()) {}
+
+    fn root(&self) -> &Self::Root {
+        &self.view
+    }
+
+    fn update(&mut self, _event: (), _model: (&mut Self::Model)) {}
+
+    fn view(_relm: &RemoteRelm<Self>, _model: &Self::Model) -> Self {
+        let view = Viewport::new(None, None);
+        let tree = TreeView::new();
+        let country_column = gtk::TreeViewColumn::new();
+        let country_column_cell = gtk::CellRendererText::new();
+        country_column.set_title("Country");
+        country_column.pack_start(&country_column_cell, true);
+
+        let start_column = gtk::TreeViewColumn::new();
+        let start_column_cell = gtk::CellRendererText::new();
+        start_column.set_title("Start date");
+        start_column.pack_start(&start_column_cell, true);
+
+        let end_column = gtk::TreeViewColumn::new();
+        let end_column_cell = gtk::CellRendererText::new();
+        end_column.set_title("End date");
+        end_column.pack_start(&end_column_cell, true);
+
+        tree.append_column(&country_column);
+        tree.append_column(&start_column);
+        tree.append_column(&end_column);
+
+        country_column.add_attribute(&country_column_cell, "text", 0);
+        start_column.add_attribute(&start_column_cell, "text", 1);
+        end_column.add_attribute(&end_column_cell, "text", 2);
+
+        view.add(&tree);
+
+        view.show_all();
+
+        MyViewPort { view, tree }
+    }
+}
+
+// Define the structure of the model.
+#[derive(Clone)]
+pub struct Model {
+    visits: Visits,
+}
+
+#[derive(Msg)]
+pub enum Msg {
+    LoadFile,
+    Quit,
+}
+
+#[widget]
+impl Widget for Win {
+    // The initial model.
+    fn model() -> Model {
+        Model { visits: Visits::new() }
+    }
+
+    // Update the model according to the message received.
+    fn update(&mut self, event: Msg, model: &mut Model) {
+        match event {
+            LoadFile => {
+                if let Some(result) = file_dialog(&self.root) {
+                    load_json(&self.root, result, &mut model.visits);
+                    model.visits.set_year_model(&self.view.widget().tree);
+                }
+            },
+            Quit => gtk::main_quit(),
+        }
+    }
+
+    view! {
+        #[name="root"]
+        gtk::Window {
+            gtk::Box {
+                // Set the orientation property of the Box.
+                orientation: Vertical,
+                // Create a Button inside the Box.
+                MyMenuBar {
+                    FileSelected => LoadFile,
+                    MenuQuit => Quit,
+                },
+                gtk::ScrolledWindow {
+                    packing: {
+                        expand: true,
+                    },
+                    #[name="view"]
+                    MyViewPort,
+                },
+            },
+            delete_event(_, _) => (Quit, Inhibit(false)),
+        }
+    }
+}
+
+fn file_dialog(parent: &gtk::Window) -> Option<PathBuf> {
     let dialog = FileChooserDialog::new::<gtk::Window>(
         Some("Import File"),
-        None,
+        Some(parent),
         gtk::FileChooserAction::Open,
     );
     let filter = gtk::FileFilter::new();
@@ -125,63 +224,6 @@ fn file_dialog() -> Option<PathBuf> {
     }
     dialog.destroy();
     None
-}
-
-#[derive(Msg)]
-pub enum Msg {
-    LoadFile(PathBuf),
-    Quit,
-}
-
-#[widget]
-impl Widget for Win {
-    // The initial model.
-    fn model() -> Model {
-        Model {
-            visits: Visits::new(),
-        }
-    }
-
-    // Update the model according to the message received.
-    fn update(&mut self, event: Msg, model: &mut Model) {
-        match event {
-            Quit => gtk::main_quit(),
-            LoadFile(x) => {
-                load_json(&self.root, x, &mut model.visits);
-                model.visits.set_year_model(&self.tree);
-            },
-        }
-    }
-
-    view! {
-        #[name="root"]
-        gtk::Window {
-            gtk::Box {
-                // Set the orientation property of the Box.
-                orientation: Vertical,
-                // Create a Button inside the Box.
-                MyMenuBar {
-                    FileSelected(path_buf) => LoadFile(path_buf),
-                    MenuQuit => Quit,
-                },
-                gtk::ScrolledWindow {
-                    packing: {
-                        expand: true,
-                    },
-                    gtk::Viewport{
-                        #[name="tree"]
-                        gtk::TreeView{
-                        },
-                    },
-                },
-            },
-            delete_event(_, _) => (Quit, Inhibit(false)),
-        }
-    }
-}
-
-fn main() {
-    Win::run(()).unwrap();
 }
 
 fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
@@ -205,8 +247,7 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
-    let mut locations: Locations = Locations::new(&contents);
-    locations.filter_outliers();
+    let locations = Locations::new(&contents).filter_outliers();
 
     // read country borders
     let encoded = include_bytes!("countries.bin");
@@ -224,9 +265,9 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
         shapes: Vec::new(),
     };
 
-    let total = locations.locations.len();
+    let total = locations.len();
 
-    for (i, loc) in locations.locations.iter().enumerate() {
+    for (i, loc) in locations.into_iter().enumerate() {
         progress.set_fraction(i as f64 / total as f64);
         gtk::main_iteration_do(false);
         let tmp = geo::Point::new(loc.longitude, loc.latitude);
@@ -249,4 +290,9 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
     }
 
     dialog.destroy();
+}
+
+
+fn main() {
+    Win::run(()).unwrap();
 }
