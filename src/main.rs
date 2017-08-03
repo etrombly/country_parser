@@ -15,7 +15,7 @@ extern crate relm_derive;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use location_history::Locations;
+use location_history::LocationsExt;
 use geo::contains::Contains;
 use country::{Country, Visits, Visit, VisitsMethods};
 use geo::Bbox;
@@ -247,7 +247,7 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
-    let locations = Locations::new(&contents).filter_outliers();
+    let locations = location_history::deserialize(&contents).filter_outliers();
 
     // read country borders
     let encoded = include_bytes!("countries.bin");
