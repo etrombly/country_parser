@@ -8,6 +8,7 @@ extern crate geo;
 extern crate dbf;
 extern crate bincode;
 extern crate gtk;
+extern crate gdk_pixbuf;
 #[macro_use]
 extern crate relm;
 extern crate relm_attributes;
@@ -32,6 +33,7 @@ use relm_attributes::widget;
 use relm::RemoteRelm;
 
 use self::Msg::*;
+use self::AboutMsg::*;
 use self::MenuMsg::*;
 
 mod country;
@@ -41,6 +43,7 @@ mod country;
 enum MenuMsg {
     FileSelected,
     SortOrder(SortBy),
+    MenuAbout,
     MenuQuit,
 }
 
@@ -61,15 +64,20 @@ impl Widget for MyMenuBar {
         &self.bar
     }
 
-    fn update(&mut self, _event: MenuMsg, _model: &mut Self::Model) {}
+    fn update(&mut self, event: MenuMsg, _model: &mut Self::Model) {
+        match event {
+            MenuAbout => { About::run(()).unwrap(); },
+            _ => {},
+        }
+    }
 
     fn view(relm: &RemoteRelm<Self>, _model: &Self::Model) -> Self {
         let menu_file = Menu::new();
         let menu_sort = Menu::new();
+        let menu_help = Menu::new();
         let menu_bar = MenuBar::new();
 
         let file = MenuItem::new_with_label("File");
-        let about = MenuItem::new_with_label("About");
         let quit = MenuItem::new_with_label("Quit");
         let file_item = MenuItem::new_with_label("Import LocationHistory");
 
@@ -77,13 +85,16 @@ impl Widget for MyMenuBar {
         let year = MenuItem::new_with_label("Year");
         let country = MenuItem::new_with_label("Country");
 
+        let help = MenuItem::new_with_label("Help");
+        let about = MenuItem::new_with_label("About");
+
         connect!(relm, quit, connect_activate(_), MenuQuit);
         connect!(relm, file_item, connect_activate(_), FileSelected);
         connect!(relm, year, connect_activate(_), SortOrder(SortBy::Year));
         connect!(relm, country, connect_activate(_), SortOrder(SortBy::Country));
+        connect!(relm, about, connect_activate(_), MenuAbout);
 
         menu_file.append(&file_item);
-        menu_file.append(&about);
         menu_file.append(&quit);
         file.set_submenu(Some(&menu_file));
 
@@ -91,8 +102,12 @@ impl Widget for MyMenuBar {
         menu_sort.append(&country);
         sort.set_submenu(&menu_sort);
 
+        menu_help.append(&about);
+        help.set_submenu(&menu_help);
+
         menu_bar.append(&file);
         menu_bar.append(&sort);
+        menu_bar.append(&help);
         menu_bar.show_all();
 
         MyMenuBar { bar: menu_bar }
@@ -153,6 +168,35 @@ impl Widget for MyViewPort {
     }
 }
 
+#[derive(Msg)]
+pub enum AboutMsg {
+    AboutQuit
+}
+
+#[widget]
+impl Widget for About {
+    // The initial model.
+    fn model() -> (){}
+
+    // Update the model according to the message received.
+    fn update(&mut self, event: AboutMsg, _model: &mut ()) {
+        match event {
+            AboutQuit => {self.dialog.destroy(); gtk::main_quit()},
+        }
+    }
+
+    view! {
+        #[name="dialog"]
+        gtk::AboutDialog{
+            authors: &["Eric Trombly"],
+            program_name: "Country Parser",
+            comments: "Find out where you've been",
+            logo: Some(&gdk_pixbuf::Pixbuf::new_from_file("Antu_map-globe.ico").unwrap()),
+            response(_, _) => (AboutQuit, ()),
+        }
+    }
+}
+
 // Define the structure of the model.
 #[derive(Clone)]
 pub struct Model {
@@ -208,7 +252,6 @@ impl Widget for Win {
             gtk::Box {
                 // Set the orientation property of the Box.
                 orientation: Vertical,
-                // Create a Button inside the Box.
                 MyMenuBar {
                     FileSelected => LoadFile,
                     SortOrder(x) => SortChanged(x),

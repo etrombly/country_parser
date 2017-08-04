@@ -3,7 +3,6 @@ authors = ["Eric Trombly <etrombly@yahoo.com>"]
 build = "src/build.rs"
 name = "country_parser"
 version = "0.1.0"
-
 [build-dependencies]
 bincode = "0.8.0"
 dbf = "0.1.1"
@@ -18,6 +17,7 @@ git = "https://github.com/fceschmidt/shapefile-utils"
 bincode = "0.8.0"
 chrono = "0.4.0"
 dbf = "0.1.1"
+gdk-pixbuf = "0.1.3"
 geo = "0.4.9"
 gtk = "0.1.3"
 gtk-sys = "0.3.4"
@@ -29,6 +29,5 @@ serde_derive = "1.0.11"
 
 [dependencies.location_history]
 git = "https://github.com/etrombly/location_history"
-
 [profile.release]
 lto = true
