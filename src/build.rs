@@ -8,6 +8,8 @@ extern crate shapefile_utils;
 use std::fs::File;
 use std::path::Path;
 use std::io::Write;
+use std::process::Command;
+use std::env;
 use shapefile_utils::Shapefile;
 use shapefile_utils::shape::{Shape, BoundingBox};
 use geo::Bbox;
@@ -22,6 +24,22 @@ pub struct Country {
 }
 
 fn main() {
+    let out_dir = env::var("OUT_DIR").unwrap();
+    Command::new("x86_64-w64-mingw32-windres")
+        .args(&["src/program.rc"])
+        .arg(&format!("{}/program.o", out_dir))
+        .status().unwrap();
+    
+    Command::new("x86_64-w64-mingw32-gcc-ar")
+        .args(&["crus", "libprogram.a", "program.o"])
+        .current_dir(&Path::new(&out_dir))
+        .status().unwrap();
+
+/*
+    println!("cargo:rustc-link-search=native={}", out_dir);
+    println!("cargo:rustc-link-lib=static=program");
+*/
+
     let mut my_shapefile = Shapefile::new(
         Path::new("src/borders/TM_WORLD_BORDERS-0.3.shp"),
         Path::new("src/borders/TM_WORLD_BORDERS-0.3.shx"),
@@ -49,7 +67,6 @@ fn main() {
         }
     }
 
-    println!("Loaded data for {} Countries\n", countries.len());
     let encoded: Vec<u8> = serialize(&countries, Infinite).unwrap();
 
     let mut bin = File::create("src/countries.bin").unwrap();

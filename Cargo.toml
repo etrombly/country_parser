@@ -3,6 +3,7 @@ authors = ["Eric Trombly <etrombly@yahoo.com>"]
 build = "src/build.rs"
 name = "country_parser"
 version = "0.1.0"
+
 [build-dependencies]
 bincode = "0.8.0"
 dbf = "0.1.1"

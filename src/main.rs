@@ -40,6 +40,7 @@ mod country;
 #[derive(Msg)]
 enum MenuMsg {
     FileSelected,
+    SortOrder(SortBy),
     MenuQuit,
 }
 
@@ -78,6 +79,8 @@ impl Widget for MyMenuBar {
 
         connect!(relm, quit, connect_activate(_), MenuQuit);
         connect!(relm, file_item, connect_activate(_), FileSelected);
+        connect!(relm, year, connect_activate(_), SortOrder(SortBy::Year));
+        connect!(relm, country, connect_activate(_), SortOrder(SortBy::Country));
 
         menu_file.append(&file_item);
         menu_file.append(&about);
@@ -154,19 +157,27 @@ impl Widget for MyViewPort {
 #[derive(Clone)]
 pub struct Model {
     visits: Visits,
+    order: SortBy,
 }
 
 #[derive(Msg)]
 pub enum Msg {
     LoadFile,
+    SortChanged(SortBy),
     Quit,
+}
+
+#[derive(Clone)]
+pub enum SortBy {
+    Country,
+    Year,
 }
 
 #[widget]
 impl Widget for Win {
     // The initial model.
     fn model() -> Model {
-        Model { visits: Visits::new() }
+        Model { visits: Visits::new(), order: SortBy::Year }
     }
 
     // Update the model according to the message received.
@@ -175,8 +186,17 @@ impl Widget for Win {
             LoadFile => {
                 if let Some(result) = file_dialog(&self.root) {
                     load_json(&self.root, result, &mut model.visits);
-                    model.visits.set_year_model(&self.view.widget().tree);
+                    match model.order {
+                        SortBy::Year => model.visits.set_year_model(&self.view.widget().tree),
+                        SortBy::Country => model.visits.set_country_model(&self.view.widget().tree),
+                    };
                 }
+            },
+            SortChanged(x) => {
+                match x {
+                    SortBy::Year => model.visits.set_year_model(&self.view.widget().tree),
+                    SortBy::Country => model.visits.set_country_model(&self.view.widget().tree),
+                };
             },
             Quit => gtk::main_quit(),
         }
@@ -191,6 +211,7 @@ impl Widget for Win {
                 // Create a Button inside the Box.
                 MyMenuBar {
                     FileSelected => LoadFile,
+                    SortOrder(x) => SortChanged(x),
                     MenuQuit => Quit,
                 },
                 gtk::ScrolledWindow {
