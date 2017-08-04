@@ -26,7 +26,7 @@ use bincode::deserialize;
 
 use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
           DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
-          ProgressBar, TreeView, Viewport, WidgetExt};
+          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt};
 use gtk::Orientation::Vertical;
 use relm::Widget;
 use relm_attributes::widget;
@@ -249,6 +249,7 @@ impl Widget for Win {
     view! {
         #[name="root"]
         gtk::Window {
+            title: "Country Parser",
             gtk::Box {
                 // Set the orientation property of the Box.
                 orientation: Vertical,
