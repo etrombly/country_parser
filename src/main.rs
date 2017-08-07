@@ -28,9 +28,8 @@ use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt
           DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
           ProgressBar, TreeView, Viewport, WidgetExt, WindowExt};
 use gtk::Orientation::Vertical;
-use relm::Widget;
+use relm::{Relm, Update, Widget};
 use relm_attributes::widget;
-use relm::RemoteRelm;
 
 use self::Msg::*;
 use self::AboutMsg::*;
@@ -52,26 +51,32 @@ struct MyMenuBar {
     bar: MenuBar,
 }
 
-impl Widget for MyMenuBar {
+impl Update for MyMenuBar {
+        // Specify the model used for this widget.
     type Model = ();
+    // Specify the model parameter used to init the model.
     type ModelParam = ();
+    // Specify the type of the messages sent to the update function.
     type Msg = MenuMsg;
-    type Root = MenuBar;
 
-    fn model(_: ()) {}
+    fn model(_: &Relm<Self>, _: ()) {}
 
-    fn root(&self) -> &Self::Root {
-        &self.bar
-    }
-
-    fn update(&mut self, event: MenuMsg, _model: &mut Self::Model) {
+    fn update(&mut self, event: MenuMsg) {
         match event {
             MenuAbout => { About::run(()).unwrap(); },
             _ => {},
         }
     }
+}
 
-    fn view(relm: &RemoteRelm<Self>, _model: &Self::Model) -> Self {
+impl Widget for MyMenuBar{
+    type Root = MenuBar;
+
+    fn root(&self) -> Self::Root {
+        self.bar
+    }
+
+    fn view(relm: &Relm<Self>, _model: Self::Model) -> Self {
         let menu_file = Menu::new();
         let menu_sort = Menu::new();
         let menu_help = Menu::new();
@@ -120,21 +125,24 @@ struct MyViewPort {
     tree: TreeView,
 }
 
-impl Widget for MyViewPort {
+impl Update for MyViewPort {
     type Model = ();
     type ModelParam = ();
     type Msg = ();
+
+    fn model(_: &Relm<Self>, _: ()) {}
+
+    fn update(&mut self, _event: ()) {}
+}
+
+impl Widget for MyViewPort {
     type Root = Viewport;
 
-    fn model(_: ()) {}
-
-    fn root(&self) -> &Self::Root {
-        &self.view
+    fn root(&self) -> Self::Root {
+        self.view
     }
 
-    fn update(&mut self, _event: (), _model: (&mut Self::Model)) {}
-
-    fn view(_relm: &RemoteRelm<Self>, _model: &Self::Model) -> Self {
+    fn view(_relm: &Relm<Self>, _model: Self::Model) -> Self {
         let view = Viewport::new(None, None);
         let tree = TreeView::new();
         let country_column = gtk::TreeViewColumn::new();
@@ -179,7 +187,7 @@ impl Widget for About {
     fn model() -> (){}
 
     // Update the model according to the message received.
-    fn update(&mut self, event: AboutMsg, _model: &mut ()) {
+    fn update(&mut self, event: AboutMsg) {
         match event {
             AboutQuit => {self.dialog.destroy(); gtk::main_quit()},
         }
@@ -225,21 +233,21 @@ impl Widget for Win {
     }
 
     // Update the model according to the message received.
-    fn update(&mut self, event: Msg, model: &mut Model) {
+    fn update(&mut self, event: Msg) {
         match event {
             LoadFile => {
                 if let Some(result) = file_dialog(&self.root) {
-                    load_json(&self.root, result, &mut model.visits);
-                    match model.order {
-                        SortBy::Year => model.visits.set_year_model(&self.view.widget().tree),
-                        SortBy::Country => model.visits.set_country_model(&self.view.widget().tree),
+                    load_json(&self.root, result, &mut self.model.visits);
+                    match self.model.order {
+                        SortBy::Year => self.model.visits.set_year_model(self.view.widget().tree),
+                        SortBy::Country => self.model.visits.set_country_model(&self.view.widget().tree),
                     };
                 }
             },
             SortChanged(x) => {
                 match x {
-                    SortBy::Year => model.visits.set_year_model(&self.view.widget().tree),
-                    SortBy::Country => model.visits.set_country_model(&self.view.widget().tree),
+                    SortBy::Year => self.model.visits.set_year_model(&self.view.widget().tree),
+                    SortBy::Country => self.model.visits.set_country_model(&self.view.widget().tree),
                 };
             },
             Quit => gtk::main_quit(),
