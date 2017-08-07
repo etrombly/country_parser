@@ -26,12 +26,13 @@ use bincode::deserialize;
 
 use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
           DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
-          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt};
+          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt, WindowType};
 use gtk::Orientation::Vertical;
 use relm::{Relm, Update, Widget};
 use relm_attributes::widget;
 
 use self::Msg::*;
+use self::ViewMsg::*;
 use self::AboutMsg::*;
 use self::MenuMsg::*;
 
@@ -51,29 +52,22 @@ struct MyMenuBar {
     bar: MenuBar,
 }
 
+/// all the events are handled in Win
 impl Update for MyMenuBar {
-        // Specify the model used for this widget.
     type Model = ();
-    // Specify the model parameter used to init the model.
     type ModelParam = ();
-    // Specify the type of the messages sent to the update function.
     type Msg = MenuMsg;
 
     fn model(_: &Relm<Self>, _: ()) {}
 
-    fn update(&mut self, event: MenuMsg) {
-        match event {
-            MenuAbout => { About::run(()).unwrap(); },
-            _ => {},
-        }
-    }
+    fn update(&mut self, _event: MenuMsg) {}
 }
 
-impl Widget for MyMenuBar{
+impl Widget for MyMenuBar {
     type Root = MenuBar;
 
     fn root(&self) -> Self::Root {
-        self.bar
+        self.bar.clone()
     }
 
     fn view(relm: &Relm<Self>, _model: Self::Model) -> Self {
@@ -121,28 +115,67 @@ impl Widget for MyMenuBar{
 
 #[derive(Clone)]
 struct MyViewPort {
+    model: ViewModel,
     view: Viewport,
     tree: TreeView,
 }
 
+#[derive(Clone)]
+pub struct ViewModel {
+    visits: Visits,
+    order: SortBy,
+}
+
+#[derive(Msg)]
+pub enum ViewMsg {
+    LoadFile,
+    SortChanged(SortBy)
+}
+
 impl Update for MyViewPort {
-    type Model = ();
+    type Model = ViewModel;
     type ModelParam = ();
-    type Msg = ();
+    type Msg = ViewMsg;
 
-    fn model(_: &Relm<Self>, _: ()) {}
+    fn model(_: &Relm<Self>, _: ()) -> ViewModel {
+        ViewModel { visits: Visits::new(), order: SortBy::Year }
+    }
 
-    fn update(&mut self, _event: ()) {}
+    fn update(&mut self, event: ViewMsg) {
+        match event {
+            LoadFile => {
+                if let Some(result) = file_dialog() {
+                    load_json(result, &mut self.model.visits);
+                    match self.model.order {
+                        SortBy::Year => self.model.visits.set_year_model(&self.tree),
+                        SortBy::Country => self.model.visits.set_country_model(&self.tree),
+                    };
+                }
+            },
+            SortChanged(x) => {
+                match x {
+                    SortBy::Year => {
+                        self.model.visits.set_year_model(&self.tree);
+                        self.model.order = SortBy::Year;
+                    },
+                    SortBy::Country => {
+                        self.model.visits.set_country_model(&self.tree);
+                        self.model.order = SortBy::Country;
+                    },
+                };
+            },
+        }
+    }
 }
 
 impl Widget for MyViewPort {
     type Root = Viewport;
 
     fn root(&self) -> Self::Root {
-        self.view
+        self.view.clone()
     }
 
-    fn view(_relm: &Relm<Self>, _model: Self::Model) -> Self {
+    fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
         let view = Viewport::new(None, None);
         let tree = TreeView::new();
         let country_column = gtk::TreeViewColumn::new();
@@ -172,7 +205,7 @@ impl Widget for MyViewPort {
 
         view.show_all();
 
-        MyViewPort { view, tree }
+        MyViewPort { model, view, tree }
     }
 }
 
@@ -205,17 +238,8 @@ impl Widget for About {
     }
 }
 
-// Define the structure of the model.
-#[derive(Clone)]
-pub struct Model {
-    visits: Visits,
-    order: SortBy,
-}
-
 #[derive(Msg)]
 pub enum Msg {
-    LoadFile,
-    SortChanged(SortBy),
     Quit,
 }
 
@@ -228,28 +252,11 @@ pub enum SortBy {
 #[widget]
 impl Widget for Win {
     // The initial model.
-    fn model() -> Model {
-        Model { visits: Visits::new(), order: SortBy::Year }
-    }
+    fn model() -> () {}
 
     // Update the model according to the message received.
     fn update(&mut self, event: Msg) {
         match event {
-            LoadFile => {
-                if let Some(result) = file_dialog(&self.root) {
-                    load_json(&self.root, result, &mut self.model.visits);
-                    match self.model.order {
-                        SortBy::Year => self.model.visits.set_year_model(self.view.widget().tree),
-                        SortBy::Country => self.model.visits.set_country_model(&self.view.widget().tree),
-                    };
-                }
-            },
-            SortChanged(x) => {
-                match x {
-                    SortBy::Year => self.model.visits.set_year_model(&self.view.widget().tree),
-                    SortBy::Country => self.model.visits.set_country_model(&self.view.widget().tree),
-                };
-            },
             Quit => gtk::main_quit(),
         }
     }
@@ -262,8 +269,9 @@ impl Widget for Win {
                 // Set the orientation property of the Box.
                 orientation: Vertical,
                 MyMenuBar {
-                    FileSelected => LoadFile,
-                    SortOrder(x) => SortChanged(x),
+                    FileSelected => view@LoadFile,
+                    SortOrder(ref x) => view@SortChanged(x.clone()),
+                    MenuAbout => About::run(()).unwrap(),
                     MenuQuit => Quit,
                 },
                 gtk::ScrolledWindow {
@@ -279,10 +287,11 @@ impl Widget for Win {
     }
 }
 
-fn file_dialog(parent: &gtk::Window) -> Option<PathBuf> {
+fn file_dialog() -> Option<PathBuf> {
+    let win = gtk::Window::new(WindowType::Popup);
     let dialog = FileChooserDialog::new::<gtk::Window>(
         Some("Import File"),
-        Some(parent),
+        Some(&win),
         gtk::FileChooserAction::Open,
     );
     let filter = gtk::FileFilter::new();
@@ -297,15 +306,16 @@ fn file_dialog(parent: &gtk::Window) -> Option<PathBuf> {
         dialog.destroy();
         return path;
     }
-    dialog.destroy();
+    win.destroy();
     None
 }
 
-fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
+fn load_json(path: PathBuf, visits: &mut Visits) {
     // set up progress bar
+    let win = gtk::Window::new(WindowType::Popup);
     let dialog = Dialog::new_with_buttons(
         Some("Processing Location History"),
-        Some(parent),
+        Some(&win),
         gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
         &[],
     );
@@ -364,9 +374,8 @@ fn load_json(parent: &gtk::Window, path: PathBuf, visits: &mut Visits) {
         }
     }
 
-    dialog.destroy();
+    win.destroy();
 }
-
 
 fn main() {
     Win::run(()).unwrap();
