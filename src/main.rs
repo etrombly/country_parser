@@ -26,7 +26,7 @@ use bincode::deserialize;
 
 use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
           DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
-          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt, WindowType};
+          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt};
 use gtk::Orientation::Vertical;
 use relm::{Relm, Update, Widget};
 use relm_attributes::widget;
@@ -41,7 +41,7 @@ mod country;
 // The messages that can be sent to the update function.
 #[derive(Msg)]
 enum MenuMsg {
-    FileSelected,
+    SelectFile,
     SortOrder(SortBy),
     MenuAbout,
     MenuQuit,
@@ -88,7 +88,7 @@ impl Widget for MyMenuBar {
         let about = MenuItem::new_with_label("About");
 
         connect!(relm, quit, connect_activate(_), MenuQuit);
-        connect!(relm, file_item, connect_activate(_), FileSelected);
+        connect!(relm, file_item, connect_activate(_), SelectFile);
         connect!(relm, year, connect_activate(_), SortOrder(SortBy::Year));
         connect!(relm, country, connect_activate(_), SortOrder(SortBy::Country));
         connect!(relm, about, connect_activate(_), MenuAbout);
@@ -128,7 +128,7 @@ pub struct ViewModel {
 
 #[derive(Msg)]
 pub enum ViewMsg {
-    LoadFile,
+    UpdateView(Visits),
     SortChanged(SortBy)
 }
 
@@ -143,26 +143,13 @@ impl Update for MyViewPort {
 
     fn update(&mut self, event: ViewMsg) {
         match event {
-            LoadFile => {
-                if let Some(result) = file_dialog() {
-                    load_json(result, &mut self.model.visits);
-                    match self.model.order {
-                        SortBy::Year => self.model.visits.set_year_model(&self.tree),
-                        SortBy::Country => self.model.visits.set_country_model(&self.tree),
-                    };
-                }
+            UpdateView(visits) => {
+                self.model.visits = visits;
+                self.update_tree_model();
             },
-            SortChanged(x) => {
-                match x {
-                    SortBy::Year => {
-                        self.model.visits.set_year_model(&self.tree);
-                        self.model.order = SortBy::Year;
-                    },
-                    SortBy::Country => {
-                        self.model.visits.set_country_model(&self.tree);
-                        self.model.order = SortBy::Country;
-                    },
-                };
+            SortChanged(order) => {
+                self.model.order = order;
+                self.update_tree_model();
             },
         }
     }
@@ -209,6 +196,15 @@ impl Widget for MyViewPort {
     }
 }
 
+impl MyViewPort {
+    fn update_tree_model(&self) {
+        match self.model.order {
+            SortBy::Year => self.model.visits.set_year_model(&self.tree),
+            SortBy::Country => self.model.visits.set_country_model(&self.tree),
+        }
+    }
+}
+
 #[derive(Msg)]
 pub enum AboutMsg {
     AboutQuit
@@ -240,6 +236,7 @@ impl Widget for About {
 
 #[derive(Msg)]
 pub enum Msg {
+    FileDialog,
     Quit,
 }
 
@@ -257,6 +254,11 @@ impl Widget for Win {
     // Update the model according to the message received.
     fn update(&mut self, event: Msg) {
         match event {
+            FileDialog => {
+                if let Some(x) = self.file_dialog() {
+                    self.view.emit(UpdateView(self.load_json(x)));
+                };
+            },
             Quit => gtk::main_quit(),
         }
     }
@@ -269,7 +271,7 @@ impl Widget for Win {
                 // Set the orientation property of the Box.
                 orientation: Vertical,
                 MyMenuBar {
-                    FileSelected => view@LoadFile,
+                    SelectFile => FileDialog,
                     SortOrder(ref x) => view@SortChanged(x.clone()),
                     MenuAbout => About::run(()).unwrap(),
                     MenuQuit => Quit,
@@ -287,94 +289,96 @@ impl Widget for Win {
     }
 }
 
-fn file_dialog() -> Option<PathBuf> {
-    let win = gtk::Window::new(WindowType::Popup);
-    let dialog = FileChooserDialog::new::<gtk::Window>(
-        Some("Import File"),
-        Some(&win),
-        gtk::FileChooserAction::Open,
-    );
-    let filter = gtk::FileFilter::new();
-    filter.set_name("json");
-    filter.add_pattern("*.json");
-    dialog.add_filter(&filter);
-    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
-    dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
-    let response_ok: i32 = gtk::ResponseType::Ok.into();
-    if dialog.run() == response_ok {
-        let path = dialog.get_filename();
+impl Win {
+    fn file_dialog(&self) -> Option<PathBuf> {
+        let dialog = FileChooserDialog::new::<gtk::Window>(
+            Some("Import File"),
+            Some(&self.root()),
+            gtk::FileChooserAction::Open,
+        );
+        let filter = gtk::FileFilter::new();
+        filter.set_name("json");
+        filter.add_pattern("*.json");
+        dialog.add_filter(&filter);
+        dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+        dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
+        let response_ok: i32 = gtk::ResponseType::Ok.into();
+        if dialog.run() == response_ok {
+            let path = dialog.get_filename();
+            dialog.destroy();
+            return path;
+        }
         dialog.destroy();
-        return path;
+        None
     }
-    win.destroy();
-    None
-}
 
-fn load_json(path: PathBuf, visits: &mut Visits) {
-    // set up progress bar
-    let win = gtk::Window::new(WindowType::Popup);
-    let dialog = Dialog::new_with_buttons(
-        Some("Processing Location History"),
-        Some(&win),
-        gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
-        &[],
-    );
+    fn load_json(&self, path: PathBuf) -> Visits {
+        // set up progress bar
+        let mut visits = Visits::new();
+        let dialog = Dialog::new_with_buttons(
+            Some("Processing Location History"),
+            Some(&self.root()),
+            gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
+            &[],
+        );
 
-    let content = dialog.get_content_area();
-    let progress = ProgressBar::new();
-    content.pack_start(&progress, true, true, 0);
-    progress.set_fraction(0.0);
-    dialog.show_all();
+        let content = dialog.get_content_area();
+        let progress = ProgressBar::new();
+        content.pack_start(&progress, true, true, 0);
+        progress.set_fraction(0.0);
+        dialog.show_all();
 
-    // read json file
-    let mut contents = String::new();
-    File::open(path)
-        .unwrap()
-        .read_to_string(&mut contents)
-        .unwrap();
-    let locations = location_history::deserialize(&contents).filter_outliers();
+        // read json file
+        let mut contents = String::new();
+        File::open(path)
+            .unwrap()
+            .read_to_string(&mut contents)
+            .unwrap();
+        let locations = location_history::deserialize(&contents).filter_outliers();
 
-    // read country borders
-    let encoded = include_bytes!("countries.bin");
-    let countries: Vec<Country> = deserialize(&encoded[..]).unwrap();
+        // read country borders
+        let encoded = include_bytes!("countries.bin");
+        let countries: Vec<Country> = deserialize(&encoded[..]).unwrap();
 
-    // empty country to start with
-    let mut last_country = Country {
-        name: "".to_string(),
-        bb: Bbox {
-            xmin: 0.0,
-            xmax: 0.0,
-            ymin: 0.0,
-            ymax: 0.0,
-        },
-        shapes: Vec::new(),
-    };
+        // empty country to start with
+        let mut last_country = Country {
+            name: "".to_string(),
+            bb: Bbox {
+                xmin: 0.0,
+                xmax: 0.0,
+                ymin: 0.0,
+                ymax: 0.0,
+            },
+            shapes: Vec::new(),
+        };
 
-    let total = locations.len();
+        let total = locations.len();
 
-    for (i, loc) in locations.into_iter().enumerate() {
-        progress.set_fraction(i as f64 / total as f64);
-        gtk::main_iteration_do(false);
-        let tmp = geo::Point::new(loc.longitude, loc.latitude);
-        if last_country.bb.contains(&tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp)) {
-            // do nothing
-        } else {
-            for country in &countries {
-                if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
-                    if let Some(visit) = visits.last_mut() {
-                        visit.end = Some(loc.timestamp);
+        for (i, loc) in locations.into_iter().enumerate() {
+            progress.set_fraction(i as f64 / total as f64);
+            gtk::main_iteration_do(false);
+            let tmp = geo::Point::new(loc.longitude, loc.latitude);
+            if last_country.bb.contains(&tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp)) {
+                // do nothing
+            } else {
+                for country in &countries {
+                    if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
+                        if let Some(visit) = visits.last_mut() {
+                            visit.end = Some(loc.timestamp);
+                        }
+                        visits.push(Visit::new(country.clone(), loc.timestamp, None));
+                        last_country = country.clone();
+                    } else {
+                        println!("couldn't find {} {:?}",
+                                loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
                     }
-                    visits.push(Visit::new(country.clone(), loc.timestamp, None));
-                    last_country = country.clone();
-                } else {
-                    println!("couldn't find {} {:?}",
-                             loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
                 }
             }
         }
-    }
 
-    win.destroy();
+        dialog.destroy();
+        visits
+    }
 }
 
 fn main() {
