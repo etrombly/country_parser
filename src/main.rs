@@ -127,7 +127,7 @@ pub struct ViewModel {
 #[derive(Msg)]
 pub enum ViewMsg {
     UpdateView(Visits),
-    SortChanged(SortBy)
+    SortChanged(SortBy),
 }
 
 impl Update for MyViewPort {
@@ -136,7 +136,10 @@ impl Update for MyViewPort {
     type Msg = ViewMsg;
 
     fn model(_: &Relm<Self>, _: ()) -> ViewModel {
-        ViewModel { visits: Visits::new(), order: SortBy::Year }
+        ViewModel {
+            visits: Visits::new(),
+            order: SortBy::Year,
+        }
     }
 
     fn update(&mut self, event: ViewMsg) {
@@ -144,11 +147,11 @@ impl Update for MyViewPort {
             UpdateView(visits) => {
                 self.model.visits = visits;
                 self.update_tree_model();
-            },
+            }
             SortChanged(order) => {
                 self.model.order = order;
                 self.update_tree_model();
-            },
+            }
         }
     }
 }
@@ -228,7 +231,7 @@ impl Widget for Win {
                 if let Some(x) = self.file_dialog() {
                     self.view.emit(UpdateView(self.load_json(x)));
                 };
-            },
+            }
             AboutDialog => self.about_dialog(),
             Quit => gtk::main_quit(),
         }
