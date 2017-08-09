@@ -12,6 +12,21 @@ pub struct Country {
     pub shapes: Vec<geo::Polygon<f64>>,
 }
 
+impl Country {
+    pub fn default() -> Country {
+        Country {
+            name: "".to_string(),
+            bb: geo::Bbox {
+                xmin: 0.0,
+                xmax: 0.0,
+                ymin: 0.0,
+                ymax: 0.0,
+            },
+            shapes: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Visit {
     pub country: Country,

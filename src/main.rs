@@ -21,7 +21,6 @@ use std::path::PathBuf;
 use location_history::LocationsExt;
 use geo::contains::Contains;
 use country::{Country, Visits, Visit, VisitsMethods};
-use geo::Bbox;
 use bincode::deserialize;
 
 use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
@@ -33,7 +32,6 @@ use relm_attributes::widget;
 
 use self::Msg::*;
 use self::ViewMsg::*;
-use self::AboutMsg::*;
 use self::MenuMsg::*;
 
 mod country;
@@ -206,37 +204,9 @@ impl MyViewPort {
 }
 
 #[derive(Msg)]
-pub enum AboutMsg {
-    AboutQuit
-}
-
-#[widget]
-impl Widget for About {
-    // The initial model.
-    fn model() -> (){}
-
-    // Update the model according to the message received.
-    fn update(&mut self, event: AboutMsg) {
-        match event {
-            AboutQuit => {self.dialog.destroy(); gtk::main_quit()},
-        }
-    }
-
-    view! {
-        #[name="dialog"]
-        gtk::AboutDialog{
-            authors: &["Eric Trombly"],
-            program_name: "Country Parser",
-            comments: "Find out where you've been",
-            logo: Some(&gdk_pixbuf::Pixbuf::new_from_file("Antu_map-globe.ico").unwrap()),
-            response(_, _) => (AboutQuit, ()),
-        }
-    }
-}
-
-#[derive(Msg)]
 pub enum Msg {
     FileDialog,
+    AboutDialog,
     Quit,
 }
 
@@ -259,6 +229,7 @@ impl Widget for Win {
                     self.view.emit(UpdateView(self.load_json(x)));
                 };
             },
+            AboutDialog => self.about_dialog(),
             Quit => gtk::main_quit(),
         }
     }
@@ -273,7 +244,7 @@ impl Widget for Win {
                 MyMenuBar {
                     SelectFile => FileDialog,
                     SortOrder(ref x) => view@SortChanged(x.clone()),
-                    MenuAbout => About::run(()).unwrap(),
+                    MenuAbout => AboutDialog,
                     MenuQuit => Quit,
                 },
                 gtk::ScrolledWindow {
@@ -312,6 +283,20 @@ impl Win {
         None
     }
 
+    fn about_dialog(&self) {
+        let dialog = gtk::AboutDialog::new();
+        dialog.set_transient_for(&self.root());
+        dialog.set_modal(true);
+        dialog.set_authors(&["Eric Trombly"]);
+        dialog.set_program_name("Country Parser");
+        dialog.set_comments("Find out where you've been");
+        if let Ok(logo) = gdk_pixbuf::Pixbuf::new_from_file("Antu_map-globe.ico") {
+            dialog.set_logo(Some(&logo));
+        };
+        dialog.run();
+        dialog.destroy();
+    }
+
     fn load_json(&self, path: PathBuf) -> Visits {
         // set up progress bar
         let mut visits = Visits::new();
@@ -341,16 +326,7 @@ impl Win {
         let countries: Vec<Country> = deserialize(&encoded[..]).unwrap();
 
         // empty country to start with
-        let mut last_country = Country {
-            name: "".to_string(),
-            bb: Bbox {
-                xmin: 0.0,
-                xmax: 0.0,
-                ymin: 0.0,
-                ymax: 0.0,
-            },
-            shapes: Vec::new(),
-        };
+        let mut last_country = Country::default();
 
         let total = locations.len();
 
@@ -358,9 +334,7 @@ impl Win {
             progress.set_fraction(i as f64 / total as f64);
             gtk::main_iteration_do(false);
             let tmp = geo::Point::new(loc.longitude, loc.latitude);
-            if last_country.bb.contains(&tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp)) {
-                // do nothing
-            } else {
+            if !(last_country.bb.contains(&tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp))) {
                 for country in &countries {
                     if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
                         if let Some(visit) = visits.last_mut() {
