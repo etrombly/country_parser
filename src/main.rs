@@ -1,31 +1,31 @@
 #![feature(proc_macro)]
 #![windows_subsystem = "windows"]
 
-#[macro_use]
-extern crate serde_derive;
-extern crate location_history;
-extern crate geo;
-extern crate dbf;
 extern crate bincode;
-extern crate gtk;
 extern crate gdk_pixbuf;
+extern crate geo;
+extern crate gtk;
+extern crate location_history;
 #[macro_use]
 extern crate relm;
 extern crate relm_attributes;
 #[macro_use]
 extern crate relm_derive;
+#[macro_use]
+extern crate serde_derive;
 
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use location_history::LocationsExt;
 use geo::contains::Contains;
-use country::{Country, Visits, Visit, VisitsMethods};
+use country::{Country, Visit, Visits, VisitsMethods};
 use bincode::deserialize;
 
-use gtk::{BoxExt, CellLayoutExt, ContainerExt, FileChooserDialog, FileChooserExt, Dialog,
-          DialogExt, Inhibit, Menu, MenuBar, MenuItem, MenuItemExt, MenuShellExt, OrientableExt,
-          ProgressBar, TreeView, Viewport, WidgetExt, WindowExt};
+use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt,
+          FileChooserDialog, FileChooserExt, FileFilterExt, Inhibit, Menu, MenuBar, MenuItem,
+          MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, ProgressBarExt, TreeView,
+          TreeViewColumnExt, TreeViewExt, Viewport, WidgetExt, WindowExt};
 use gtk::Orientation::Vertical;
 use relm::{Relm, Update, Widget};
 use relm_attributes::widget;
@@ -88,7 +88,12 @@ impl Widget for MyMenuBar {
         connect!(relm, quit, connect_activate(_), MenuQuit);
         connect!(relm, file_item, connect_activate(_), SelectFile);
         connect!(relm, year, connect_activate(_), SortOrder(SortBy::Year));
-        connect!(relm, country, connect_activate(_), SortOrder(SortBy::Country));
+        connect!(
+            relm,
+            country,
+            connect_activate(_),
+            SortOrder(SortBy::Country)
+        );
         connect!(relm, about, connect_activate(_), MenuAbout);
 
         menu_file.append(&file_item);
@@ -337,17 +342,25 @@ impl Win {
             progress.set_fraction(i as f64 / total as f64);
             gtk::main_iteration_do(false);
             let tmp = geo::Point::new(loc.longitude, loc.latitude);
-            if !(last_country.bb.contains(&tmp) && last_country.shapes.iter().any(|x| x.contains(&tmp))) {
+            if !(last_country.bb.contains(&tmp) &&
+                last_country.shapes.iter().any(|x| x.contains(&tmp)))
+            {
                 for country in &countries {
-                    if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp)) {
+                    if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp))
+                    {
                         if let Some(visit) = visits.last_mut() {
                             visit.end = Some(loc.timestamp);
                         }
                         visits.push(Visit::new(country.clone(), loc.timestamp, None));
                         last_country = country.clone();
                     } else {
-                        println!("couldn't find {} {:?}",
-                                loc.timestamp.format("%Y-%m-%d").to_string(), tmp);
+                        /*
+                        println!(
+                            "couldn't find {} {:?}",
+                            loc.timestamp.format("%Y-%m-%d").to_string(),
+                            tmp
+                        );
+                        */
                     }
                 }
             }

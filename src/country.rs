@@ -1,9 +1,10 @@
-extern crate geo;
 extern crate chrono;
+extern crate geo;
 extern crate gtk;
 
 use std::collections::BTreeMap;
 use self::chrono::NaiveDateTime;
+use gtk::{TreeStoreExt, TreeStoreExtManual, TreeViewExt};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Country {
