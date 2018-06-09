@@ -341,7 +341,7 @@ impl Win {
         for (i, loc) in locations.into_iter().enumerate() {
             progress.set_fraction(i as f64 / total as f64);
             gtk::main_iteration_do(false);
-            let tmp = geo::Point::new(loc.longitude, loc.latitude);
+            let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
             if !(last_country.bb.contains(&tmp) &&
                 last_country.shapes.iter().any(|x| x.contains(&tmp)))
             {

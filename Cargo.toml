@@ -27,9 +27,7 @@ serde_derive = "1.0.15"
 relm = "0.10"
 relm-attributes = "0.10"
 relm-derive = "0.10"
-
-[dependencies.location_history]
-git = "https://github.com/etrombly/location_history"
+location_history = "0.2.0"
 
 [profile.release]
 lto = true
