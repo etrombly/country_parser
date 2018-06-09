@@ -1,7 +1,6 @@
 #![feature(proc_macro)]
 #![windows_subsystem = "windows"]
 
-extern crate bincode;
 extern crate gdk_pixbuf;
 extern crate geo;
 extern crate gtk;
@@ -11,16 +10,14 @@ extern crate relm;
 extern crate relm_attributes;
 #[macro_use]
 extern crate relm_derive;
-#[macro_use]
 extern crate serde_derive;
+extern crate rgeo;
 
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use location_history::LocationsExt;
-use geo::contains::Contains;
-use country::{Country, Visit, Visits, VisitsMethods};
-use bincode::deserialize;
+use country::{Visit, Visits, VisitsMethods};
 
 use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt,
           FileChooserDialog, FileChooserExt, FileFilterExt, Inhibit, Menu, MenuBar, MenuItem,
@@ -329,39 +326,18 @@ impl Win {
             .unwrap();
         let locations = location_history::deserialize(&contents).filter_outliers();
 
-        // read country borders
-        let encoded = include_bytes!("countries.bin");
-        let countries: Vec<Country> = deserialize(&encoded[..]).unwrap();
-
         // empty country to start with
-        let mut last_country = Country::default();
+        let mut last_country = "".to_owned();
 
         let total = locations.len();
 
         for (i, loc) in locations.into_iter().enumerate() {
             progress.set_fraction(i as f64 / total as f64);
             gtk::main_iteration_do(false);
-            let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
-            if !(last_country.bb.contains(&tmp) &&
-                last_country.shapes.iter().any(|x| x.contains(&tmp)))
-            {
-                for country in &countries {
-                    if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp))
-                    {
-                        if let Some(visit) = visits.last_mut() {
-                            visit.end = Some(loc.timestamp);
-                        }
-                        visits.push(Visit::new(country.clone(), loc.timestamp, None));
-                        last_country = country.clone();
-                    } else {
-                        /*
-                        println!(
-                            "couldn't find {} {:?}",
-                            loc.timestamp.format("%Y-%m-%d").to_string(),
-                            tmp
-                        );
-                        */
-                    }
+            if let Some((_, x)) = rgeo::search(loc.latitude, loc.longitude){
+                if x.country != last_country {
+                    visits.push(Visit::new(x.country.clone(), loc.timestamp, None));
+                    last_country = x.country.clone();
                 }
             }
         }

@@ -1,21 +1,9 @@
 [package]
 authors = ["Eric Trombly <etrombly@yahoo.com>"]
-build = "src/build.rs"
 name = "country_parser"
 version = "0.1.0"
 
-[build-dependencies]
-bincode = "0.8.0"
-dbf = "0.1.1"
-geo = "0.6.2"
-serde = "1.0.15"
-serde_derive = "1.0.15"
-
-[build-dependencies.shapefile-utils]
-git = "https://github.com/fceschmidt/shapefile-utils"
-
 [dependencies]
-bincode = "0.8.0"
 chrono = "0.4.0"
 dbf = "0.1.1"
 gdk-pixbuf = "0.2.0"
@@ -28,6 +16,7 @@ relm = "0.10"
 relm-attributes = "0.10"
 relm-derive = "0.10"
 location_history = "0.2.0"
+rgeo = "0.2.0"
 
 [profile.release]
 lto = true

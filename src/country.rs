@@ -6,37 +6,15 @@ use std::collections::BTreeMap;
 use self::chrono::NaiveDateTime;
 use gtk::{TreeStoreExt, TreeStoreExtManual, TreeViewExt};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Country {
-    pub name: String,
-    pub bb: geo::Bbox<f64>,
-    pub shapes: Vec<geo::Polygon<f64>>,
-}
-
-impl Country {
-    pub fn default() -> Country {
-        Country {
-            name: "".to_string(),
-            bb: geo::Bbox {
-                xmin: 0.0,
-                xmax: 0.0,
-                ymin: 0.0,
-                ymax: 0.0,
-            },
-            shapes: Vec::new(),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Visit {
-    pub country: Country,
+    pub country: String,
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
 }
 
 impl Visit {
-    pub fn new(country: Country, start: NaiveDateTime, end: Option<NaiveDateTime>) -> Visit {
+    pub fn new(country: String, start: NaiveDateTime, end: Option<NaiveDateTime>) -> Visit {
         Visit {
             country,
             start,
@@ -67,7 +45,7 @@ pub type Visits = Vec<Visit>;
 impl VisitsMethods for Visits {
     fn set_country_model(&self, tree: &gtk::TreeView) {
         let sorted = self.iter().fold(BTreeMap::new(), |mut m, c| {
-            m.entry(c.country.name.clone())
+            m.entry(c.country.clone())
                 .or_insert_with(Vec::new)
                 .push(c);
             m
@@ -110,7 +88,7 @@ impl VisitsMethods for Visits {
                     &entries,
                     &[0, 1, 2],
                     &[
-                        &visit.country.name,
+                        &visit.country.clone(),
                         &visit.start_to_string(),
                         &visit.end_to_string(),
                     ],
