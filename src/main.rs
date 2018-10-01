@@ -1,4 +1,3 @@
-#![feature(proc_macro)]
 #![windows_subsystem = "windows"]
 
 extern crate gdk_pixbuf;
@@ -22,7 +21,7 @@ use country::{Visit, Visits, VisitsMethods};
 use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt,
           FileChooserDialog, FileChooserExt, FileFilterExt, Inhibit, Menu, MenuBar, MenuItem,
           MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, ProgressBarExt, TreeView,
-          TreeViewColumnExt, TreeViewExt, Viewport, WidgetExt, WindowExt};
+          TreeViewColumnExt, TreeViewExt, Viewport, WidgetExt, GtkWindowExt};
 use gtk::Orientation::Vertical;
 use relm::{Relm, Update, Widget};
 use relm_attributes::widget;
@@ -35,7 +34,7 @@ mod country;
 
 // The messages that can be sent to the update function.
 #[derive(Msg)]
-enum MenuMsg {
+pub enum MenuMsg {
     SelectFile,
     SortOrder(SortBy),
     MenuAbout,
@@ -43,7 +42,7 @@ enum MenuMsg {
 }
 
 #[derive(Clone)]
-struct MyMenuBar {
+pub struct MyMenuBar {
     bar: MenuBar,
 }
 
@@ -114,7 +113,7 @@ impl Widget for MyMenuBar {
 }
 
 #[derive(Clone)]
-struct MyViewPort {
+pub struct MyViewPort {
     model: ViewModel,
     view: Viewport,
     tree: TreeView,
@@ -253,9 +252,8 @@ impl Widget for Win {
                     MenuQuit => Quit,
                 },
                 gtk::ScrolledWindow {
-                    packing: {
-                        expand: true,
-                    },
+                    hexpand: true,
+                    vexpand: true,
                     #[name="view"]
                     MyViewPort,
                 },
@@ -308,7 +306,7 @@ impl Win {
         let dialog = Dialog::new_with_buttons(
             Some("Processing Location History"),
             Some(&self.root()),
-            gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
+            gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
             &[],
         );
 
