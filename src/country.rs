@@ -3,6 +3,7 @@ extern crate geo;
 extern crate gtk;
 
 use std::collections::BTreeMap;
+use std::cmp::Ordering;
 use self::chrono::NaiveDateTime;
 use gtk::{TreeStoreExt, TreeStoreExtManual, TreeViewExt};
 
@@ -34,6 +35,35 @@ impl Visit {
     }
 }
 
+impl PartialOrd for Visit {
+    fn partial_cmp(&self, other: &Visit) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Visit {
+    fn cmp(&self, other: &Visit) -> Ordering {
+        if self.country == other.country {
+            self.start.date().cmp(&other.start.date())
+        } else {
+            self.country.cmp(&other.country)
+        }
+    }
+}
+
+impl PartialEq for Visit {
+    fn eq(&self, other: &Visit) -> bool {
+        self.country == other.country &&
+        self.start.date() == other.start.date() &&
+        match (self.end, other.end) {
+            (Some(x), Some(y)) => x.date() == y.date(),
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Visit {}
 
 pub trait VisitsMethods {
     fn set_country_model(&self, tree: &gtk::TreeView);

@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use location_history::LocationsExt;
 use country::{Visit, Visits, VisitsMethods};
 
-use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt,
+use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogFlags, DialogExt,
           FileChooserDialog, FileChooserExt, FileFilterExt, Inhibit, Menu, MenuBar, MenuItem,
           MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, ProgressBarExt, TreeView,
           TreeViewColumnExt, TreeViewExt, Viewport, WidgetExt, GtkWindowExt};
@@ -306,7 +306,7 @@ impl Win {
         let dialog = Dialog::new_with_buttons(
             Some("Processing Location History"),
             Some(&self.root()),
-            gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
+            DialogFlags::MODAL | DialogFlags::DESTROY_WITH_PARENT,
             &[],
         );
 
@@ -334,6 +334,9 @@ impl Win {
             gtk::main_iteration_do(false);
             if let Some((_, x)) = rgeo::search(loc.latitude, loc.longitude){
                 if x.country != last_country {
+                    if let Some(last) = visits.pop() {
+                        visits.push(Visit::new(last.country, last.start, Some(loc.timestamp)));
+                    }
                     visits.push(Visit::new(x.country.clone(), loc.timestamp, None));
                     last_country = x.country.clone();
                 }
@@ -341,6 +344,9 @@ impl Win {
         }
 
         dialog.destroy();
+        visits.sort();
+        visits.dedup();
+        visits.sort_by(|a, b| a.start.cmp(&b.start));
         visits
     }
 }
