@@ -1,27 +1,23 @@
-extern crate chrono;
-extern crate geo;
-extern crate gtk;
-
-use std::collections::BTreeMap;
-use self::chrono::NaiveDateTime;
+use chrono::NaiveDateTime;
+use geo::{Coordinate, Polygon, Rect};
 use gtk::{TreeStoreExt, TreeStoreExtManual, TreeViewExt};
+use serde::Deserialize;
+use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Country {
     pub name: String,
-    pub bb: geo::Bbox<f64>,
-    pub shapes: Vec<geo::Polygon<f64>>,
+    pub bb: Rect<f64>,
+    pub shapes: Vec<Polygon<f64>>,
 }
 
 impl Country {
     pub fn default() -> Country {
         Country {
             name: "".to_string(),
-            bb: geo::Bbox {
-                xmin: 0.0,
-                xmax: 0.0,
-                ymin: 0.0,
-                ymax: 0.0,
+            bb: Rect {
+                min: Coordinate { x: 0.0, y: 0.0 },
+                max: Coordinate { x: 0.0, y: 0.0 },
             },
             shapes: Vec::new(),
         }
@@ -56,7 +52,6 @@ impl Visit {
     }
 }
 
-
 pub trait VisitsMethods {
     fn set_country_model(&self, tree: &gtk::TreeView);
     fn set_year_model(&self, tree: &gtk::TreeView);
@@ -79,7 +74,7 @@ impl VisitsMethods for Visits {
             let top = model.append(None);
             model.set(&top, &[0], &[&key]);
             for visit in visits {
-                let entries = model.append(&top);
+                let entries = model.append(Some(&top));
                 model.set(
                     &entries,
                     &[1, 2],
@@ -88,7 +83,7 @@ impl VisitsMethods for Visits {
             }
         }
 
-        tree.set_model(&model);
+        tree.set_model(Some(&model));
     }
 
     fn set_year_model(&self, tree: &gtk::TreeView) {
@@ -105,7 +100,7 @@ impl VisitsMethods for Visits {
             let top = model.append(None);
             model.set(&top, &[0], &[&key]);
             for visit in visits {
-                let entries = model.append(&top);
+                let entries = model.append(Some(&top));
                 model.set(
                     &entries,
                     &[0, 1, 2],
@@ -118,6 +113,6 @@ impl VisitsMethods for Visits {
             }
         }
 
-        tree.set_model(&model);
+        tree.set_model(Some(&model));
     }
 }

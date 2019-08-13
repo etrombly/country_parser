@@ -1,44 +1,34 @@
-#![feature(proc_macro)]
 #![windows_subsystem = "windows"]
 
-extern crate bincode;
-extern crate gdk_pixbuf;
-extern crate geo;
-extern crate gtk;
-extern crate location_history;
-#[macro_use]
-extern crate relm;
-extern crate relm_attributes;
-#[macro_use]
-extern crate relm_derive;
-#[macro_use]
-extern crate serde_derive;
-
+use bincode::deserialize;
+use country::{Country, Visit, Visits, VisitsMethods};
+use geo::contains::Contains;
+use location_history::LocationsExt;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use location_history::LocationsExt;
-use geo::contains::Contains;
-use country::{Country, Visit, Visits, VisitsMethods};
-use bincode::deserialize;
 
-use gtk::{AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt,
-          FileChooserDialog, FileChooserExt, FileFilterExt, Inhibit, Menu, MenuBar, MenuItem,
-          MenuItemExt, MenuShellExt, OrientableExt, ProgressBar, ProgressBarExt, TreeView,
-          TreeViewColumnExt, TreeViewExt, Viewport, WidgetExt, WindowExt};
 use gtk::Orientation::Vertical;
-use relm::{Relm, Update, Widget};
-use relm_attributes::widget;
+use gtk::{
+    AboutDialogExt, BoxExt, CellLayoutExt, ContainerExt, Dialog, DialogExt, FileChooserDialog,
+    FileChooserExt, GtkMenuItemExt, GtkWindowExt, Inhibit, Menu, MenuBar, MenuItem, MenuShellExt,
+    OrientableExt, ProgressBar, ProgressBarExt, TreeView, TreeViewColumnExt, TreeViewExt, Viewport,ViewportBuilder,
+    WidgetExt,
+};
 
+use relm::{connect, connect_stream, Relm, Update, Widget};
+use relm_attributes::widget;
+use relm_derive::Msg;
+
+use self::MenuMsg::*;
 use self::Msg::*;
 use self::ViewMsg::*;
-use self::MenuMsg::*;
 
 mod country;
 
 // The messages that can be sent to the update function.
 #[derive(Msg)]
-enum MenuMsg {
+pub enum MenuMsg {
     SelectFile,
     SortOrder(SortBy),
     MenuAbout,
@@ -46,7 +36,7 @@ enum MenuMsg {
 }
 
 #[derive(Clone)]
-struct MyMenuBar {
+pub struct MyMenuBar {
     bar: MenuBar,
 }
 
@@ -102,10 +92,10 @@ impl Widget for MyMenuBar {
 
         menu_sort.append(&year);
         menu_sort.append(&country);
-        sort.set_submenu(&menu_sort);
+        sort.set_submenu(Some(&menu_sort));
 
         menu_help.append(&about);
-        help.set_submenu(&menu_help);
+        help.set_submenu(Some(&menu_help));
 
         menu_bar.append(&file);
         menu_bar.append(&sort);
@@ -117,7 +107,7 @@ impl Widget for MyMenuBar {
 }
 
 #[derive(Clone)]
-struct MyViewPort {
+pub struct MyViewPort {
     model: ViewModel,
     view: Viewport,
     tree: TreeView,
@@ -169,7 +159,7 @@ impl Widget for MyViewPort {
     }
 
     fn view(_relm: &Relm<Self>, model: Self::Model) -> Self {
-        let view = Viewport::new(None, None);
+        let view = ViewportBuilder::new().build();
         let tree = TreeView::new();
         let country_column = gtk::TreeViewColumn::new();
         let country_column_cell = gtk::CellRendererText::new();
@@ -256,11 +246,10 @@ impl Widget for Win {
                     MenuQuit => Quit,
                 },
                 gtk::ScrolledWindow {
-                    packing: {
-                        expand: true,
-                    },
                     #[name="view"]
-                    MyViewPort,
+                    MyViewPort {
+                        property_expand: true,
+                    },
                 },
             },
             delete_event(_, _) => (Quit, Inhibit(false)),
@@ -276,13 +265,12 @@ impl Win {
             gtk::FileChooserAction::Open,
         );
         let filter = gtk::FileFilter::new();
-        filter.set_name("json");
+        filter.set_name(Some("json"));
         filter.add_pattern("*.json");
         dialog.add_filter(&filter);
         dialog.add_button("Ok", gtk::ResponseType::Ok.into());
         dialog.add_button("Cancel", gtk::ResponseType::Cancel.into());
-        let response_ok: i32 = gtk::ResponseType::Ok.into();
-        if dialog.run() == response_ok {
+        if dialog.run() == gtk::ResponseType::Ok {
             let path = dialog.get_filename();
             dialog.destroy();
             return path;
@@ -293,11 +281,11 @@ impl Win {
 
     fn about_dialog(&self) {
         let dialog = gtk::AboutDialog::new();
-        dialog.set_transient_for(&self.root());
+        dialog.set_transient_for(Some(&self.root()));
         dialog.set_modal(true);
         dialog.set_authors(&["Eric Trombly"]);
         dialog.set_program_name("Country Parser");
-        dialog.set_comments("Find out where you've been");
+        dialog.set_comments(Some("Find out where you've been"));
         if let Ok(logo) = gdk_pixbuf::Pixbuf::new_from_file("Antu_map-globe.ico") {
             dialog.set_logo(Some(&logo));
         };
@@ -311,7 +299,7 @@ impl Win {
         let dialog = Dialog::new_with_buttons(
             Some("Processing Location History"),
             Some(&self.root()),
-            gtk::DIALOG_MODAL | gtk::DIALOG_DESTROY_WITH_PARENT,
+            gtk::DialogFlags::MODAL | gtk::DialogFlags::DESTROY_WITH_PARENT,
             &[],
         );
 
@@ -342,8 +330,8 @@ impl Win {
             progress.set_fraction(i as f64 / total as f64);
             gtk::main_iteration_do(false);
             let tmp = geo::Point::new(loc.longitude as f64, loc.latitude as f64);
-            if !(last_country.bb.contains(&tmp) &&
-                last_country.shapes.iter().any(|x| x.contains(&tmp)))
+            if !(last_country.bb.contains(&tmp)
+                && last_country.shapes.iter().any(|x| x.contains(&tmp)))
             {
                 for country in &countries {
                     if country.bb.contains(&tmp) && country.shapes.iter().any(|x| x.contains(&tmp))

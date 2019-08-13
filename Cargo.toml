@@ -3,31 +3,42 @@ authors = ["Eric Trombly <etrombly@yahoo.com>"]
 build = "src/build.rs"
 name = "country_parser"
 version = "0.1.0"
+edition = "2018"
 
 [build-dependencies]
-bincode = "0.8.0"
+bincode = "1.1.4"
 dbf = "0.1.1"
-geo = "0.6.2"
-serde = "1.0.15"
-serde_derive = "1.0.15"
 
 [build-dependencies.shapefile-utils]
 git = "https://github.com/fceschmidt/shapefile-utils"
 
+[build-dependencies.serde]
+version = "1.0.98"
+features = ["derive"]
+
+[build-dependencies.geo]
+version = "0.12.2"
+features = ["use-serde"]
+
 [dependencies]
-bincode = "0.8.0"
-chrono = "0.4.0"
+bincode = "1.1.4"
+chrono = "0.4.7"
 dbf = "0.1.1"
-gdk-pixbuf = "0.2.0"
-geo = "0.6.2"
-gtk = "0.2.0"
-gtk-sys = "0.4.0"
-serde = "1.0.15"
-serde_derive = "1.0.15"
-relm = "0.10"
-relm-attributes = "0.10"
-relm-derive = "0.10"
-location_history = "0.2.0"
+gdk-pixbuf = "0.7.0"
+gtk = "0.7.0"
+gtk-sys = "0.9.0"
+relm = "0.17.0"
+relm-attributes = "0.16.0"
+relm-derive = "0.17.0"
+location_history = "0.2.1"
+
+[dependencies.serde]
+version = "1.0.98"
+features = ["derive"]
+
+[dependencies.geo]
+version = "0.12.2"
+features = ["use-serde"]
 
 [profile.release]
 lto = true
